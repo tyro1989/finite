@@ -1,0 +1,7 @@
+[build]
+buildCommand = "npm install --include=dev && npm run deploy"
+
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 30

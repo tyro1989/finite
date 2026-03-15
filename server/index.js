@@ -123,6 +123,7 @@ app.get('*', (_req, res) => {
 // ─── Start ────────────────────────────────────────────────────────────────────
 
 const PORT = process.env.PORT || 3000
-initDb()
-  .then(() => app.listen(PORT, () => console.log(`Finite running on :${PORT}`)))
-  .catch(err => { console.error('DB init failed', err); process.exit(1) })
+app.listen(PORT, () => {
+  console.log(`Finite running on :${PORT}`)
+  initDb().catch(err => console.error('DB init failed:', err.message))
+})

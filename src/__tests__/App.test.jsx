@@ -1,6 +1,18 @@
-import { describe, it, expect } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import App from '../App'
+
+// Prevent real HTTP calls in tests
+vi.mock('../api', () => ({
+  createUser: vi.fn().mockResolvedValue({ userId: 'test-uuid-1234' }),
+  loadUser:   vi.fn().mockResolvedValue(null),
+  saveUser:   vi.fn().mockResolvedValue(undefined),
+}))
+
+// waitFor uses setTimeout internally — it breaks under vi.useFakeTimers().
+// The global beforeEach (test-setup.js) enables fake timers; we undo that here
+// so async loading resolves correctly. App tests don't need a fixed date.
+beforeEach(() => vi.useRealTimers())
 
 const ONBOARDED_STATE = {
   onboarded: true,
@@ -19,24 +31,28 @@ function saveState(state) {
 }
 
 describe('App — initial load', () => {
-  it('shows Onboarding when localStorage is empty', () => {
+  it('shows Onboarding when localStorage is empty', async () => {
     render(<App />)
-    // The welcome screen shows the iconic 4,680 number
-    expect(screen.getByText('4,680')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('4,680')).toBeInTheDocument())
   })
 
-  it('shows the main app when a saved state exists', () => {
+  it('shows the main app when a saved state exists', async () => {
     saveState(ONBOARDED_STATE)
     render(<App />)
-    expect(screen.getByText('Finite')).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByText('Finite')).toBeInTheDocument())
   })
 })
 
 describe('App — navigation', () => {
   beforeEach(() => saveState(ONBOARDED_STATE))
 
-  it('renders all 5 navigation tabs', () => {
+  async function renderAndWait() {
     render(<App />)
+    await waitFor(() => expect(screen.getByText('Finite')).toBeInTheDocument())
+  }
+
+  it('renders all 5 navigation tabs', async () => {
+    await renderAndWait()
     expect(screen.getByRole('button', { name: /Your Life/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Reality Check/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Goals/i })).toBeInTheDocument()
@@ -44,41 +60,41 @@ describe('App — navigation', () => {
     expect(screen.getByRole('button', { name: /This Week/i })).toBeInTheDocument()
   })
 
-  it('defaults to the Grid (Your Life) tab', () => {
-    render(<App />)
-    // Grid shows the seconds counter
+  it('defaults to the Grid (Your Life) tab', async () => {
+    await renderAndWait()
     expect(screen.getByText(/seconds alive/i)).toBeInTheDocument()
   })
 
-  it('switches to Reality Check tab', () => {
-    render(<App />)
+  it('switches to Reality Check tab', async () => {
+    await renderAndWait()
     fireEvent.click(screen.getByRole('button', { name: /Reality Check/i }))
     expect(screen.getByText('The Reality Check')).toBeInTheDocument()
   })
 
-  it('switches to Goals tab', () => {
-    render(<App />)
+  it('switches to Goals tab', async () => {
+    await renderAndWait()
     fireEvent.click(screen.getByRole('button', { name: /Goals/i }))
     expect(screen.getByRole('heading', { name: /Life Goals/i })).toBeInTheDocument()
   })
 
-  it('switches to People tab', () => {
-    render(<App />)
+  it('switches to People tab', async () => {
+    await renderAndWait()
     fireEvent.click(screen.getByRole('button', { name: /People/i }))
     expect(screen.getByText('The People Who Matter')).toBeInTheDocument()
   })
 
-  it('switches to This Week tab', () => {
-    render(<App />)
+  it('switches to This Week tab', async () => {
+    await renderAndWait()
     fireEvent.click(screen.getByRole('button', { name: /This Week/i }))
     expect(screen.getByText(/What matters most this week/i)).toBeInTheDocument()
   })
 })
 
 describe('App — state persistence', () => {
-  it('persists onboarding data to localStorage', () => {
+  it('persists onboarding data to localStorage', async () => {
     saveState(ONBOARDED_STATE)
     render(<App />)
+    await waitFor(() => expect(screen.getByText('Finite')).toBeInTheDocument())
     const stored = JSON.parse(localStorage.getItem('lifeinweeks_v1'))
     expect(stored.name).toBe('Alex')
     expect(stored.birthday).toBe('1990-03-15')

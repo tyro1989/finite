@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Onboarding from './components/Onboarding'
 import Grid from './components/Grid'
 import RealityCheck from './components/RealityCheck'
 import Goals from './components/Goals'
 import People from './components/People'
 import CheckIn from './components/CheckIn'
+import { createUser, loadUser, saveUser } from './api'
 
 const STORAGE_KEY = 'lifeinweeks_v1'
+const USER_ID_KEY = 'finite_user_id'
 
 const defaultState = {
   onboarded: false,
@@ -20,7 +22,7 @@ const defaultState = {
   weeklyIntentions: {},
 }
 
-function loadState() {
+function loadLocalState() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY)
     if (saved) return { ...defaultState, ...JSON.parse(saved) }
@@ -37,14 +39,84 @@ const TABS = [
 ]
 
 export default function App() {
-  const [state, setState] = useState(loadState)
+  const [state, setState] = useState(defaultState)
   const [activeTab, setActiveTab] = useState('grid')
+  const [loading, setLoading] = useState(true)
+  const [syncing, setSyncing] = useState(false)
+  const [syncError, setSyncError] = useState(false)
+  const userIdRef = useRef(null)
+  const saveTimer = useRef(null)
 
+  // ── Bootstrap: resolve userId, load data from API (fallback: localStorage) ──
   useEffect(() => {
+    async function bootstrap() {
+      let userId = localStorage.getItem(USER_ID_KEY)
+
+      if (!userId) {
+        // First visit — create a new user in the DB
+        try {
+          const { userId: newId } = await createUser()
+          userId = newId
+          localStorage.setItem(USER_ID_KEY, userId)
+        } catch {
+          // API unavailable — fall back to localStorage-only mode
+          setState(loadLocalState())
+          setLoading(false)
+          return
+        }
+      }
+
+      userIdRef.current = userId
+
+      // Try loading from backend
+      try {
+        const data = await loadUser(userId)
+        if (data) {
+          const { userId: _id, ...rest } = data
+          setState({ ...defaultState, ...rest })
+        } else {
+          // userId exists locally but not in DB (e.g. DB was wiped) — use localStorage
+          setState(loadLocalState())
+        }
+      } catch {
+        // API unavailable — use localStorage cache
+        setState(loadLocalState())
+        setSyncError(true)
+      }
+
+      setLoading(false)
+    }
+
+    bootstrap()
+  }, [])
+
+  // ── Persist to localStorage on every change ────────────────────────────────
+  useEffect(() => {
+    if (loading) return
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
-  }, [state])
+  }, [state, loading])
+
+  // ── Debounced sync to backend (1.5s after last change) ────────────────────
+  useEffect(() => {
+    if (loading || !userIdRef.current || !state.onboarded) return
+    clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(async () => {
+      setSyncing(true)
+      setSyncError(false)
+      try {
+        await saveUser(userIdRef.current, state)
+      } catch {
+        setSyncError(true)
+      } finally {
+        setSyncing(false)
+      }
+    }, 1500)
+    return () => clearTimeout(saveTimer.current)
+  }, [state, loading])
 
   const update = (updates) => setState(prev => ({ ...prev, ...updates }))
+
+  if (loading) return <LoadingScreen />
 
   if (!state.onboarded) {
     return <Onboarding onComplete={(data) => update({ ...data, onboarded: true })} />
@@ -64,6 +136,10 @@ export default function App() {
               {tab.label}
             </button>
           ))}
+        </div>
+        <div style={s.syncStatus}>
+          {syncing && <span style={s.syncing}>↑</span>}
+          {syncError && <span style={s.syncErr} title="Sync failed — saved locally">!</span>}
         </div>
         <button
           style={s.resetBtn}
@@ -120,72 +196,32 @@ export default function App() {
   )
 }
 
+function LoadingScreen() {
+  return (
+    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontFamily: 'var(--font-serif)', fontSize: 32, color: '#c9a84c' }}>Finite</div>
+        <div style={{ fontSize: 12, color: '#5a5550', marginTop: 12, letterSpacing: '0.1em' }}>LOADING</div>
+      </div>
+    </div>
+  )
+}
+
 const s = {
-  app: {
-    minHeight: '100vh',
-    display: 'flex',
-    flexDirection: 'column',
-    background: 'var(--bg)',
-  },
+  app: { minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' },
   nav: {
-    position: 'sticky',
-    top: 0,
-    zIndex: 100,
-    background: 'rgba(10,10,10,0.96)',
-    backdropFilter: 'blur(12px)',
+    position: 'sticky', top: 0, zIndex: 100,
+    background: 'rgba(10,10,10,0.96)', backdropFilter: 'blur(12px)',
     borderBottom: '1px solid var(--border)',
-    padding: '0 24px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 24,
-    height: 54,
-    flexShrink: 0,
+    padding: '0 24px', display: 'flex', alignItems: 'center', gap: 24, height: 54, flexShrink: 0,
   },
-  brand: {
-    fontFamily: 'var(--font-serif)',
-    fontSize: 15,
-    color: 'var(--accent)',
-    letterSpacing: '0.02em',
-    whiteSpace: 'nowrap',
-    flexShrink: 0,
-  },
-  tabs: {
-    display: 'flex',
-    gap: 2,
-    flex: 1,
-    overflowX: 'auto',
-    scrollbarWidth: 'none',
-  },
-  tab: {
-    background: 'none',
-    color: 'var(--text3)',
-    fontSize: 11,
-    fontWeight: 500,
-    padding: '5px 12px',
-    borderRadius: 5,
-    whiteSpace: 'nowrap',
-    letterSpacing: '0.06em',
-    textTransform: 'uppercase',
-    border: 'none',
-  },
-  tabActive: {
-    color: 'var(--accent)',
-    background: 'rgba(201,168,76,0.08)',
-  },
-  resetBtn: {
-    background: 'none',
-    color: 'var(--text3)',
-    fontSize: 11,
-    padding: '4px 8px',
-    borderRadius: 4,
-    flexShrink: 0,
-    border: 'none',
-  },
-  main: {
-    flex: 1,
-    padding: '32px 24px 64px',
-    maxWidth: 1100,
-    margin: '0 auto',
-    width: '100%',
-  },
+  brand: { fontFamily: 'var(--font-serif)', fontSize: 15, color: 'var(--accent)', letterSpacing: '0.02em', whiteSpace: 'nowrap', flexShrink: 0 },
+  tabs: { display: 'flex', gap: 2, flex: 1, overflowX: 'auto', scrollbarWidth: 'none' },
+  tab: { background: 'none', color: 'var(--text3)', fontSize: 11, fontWeight: 500, padding: '5px 12px', borderRadius: 5, whiteSpace: 'nowrap', letterSpacing: '0.06em', textTransform: 'uppercase', border: 'none' },
+  tabActive: { color: 'var(--accent)', background: 'rgba(201,168,76,0.08)' },
+  syncStatus: { display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 },
+  syncing: { fontSize: 14, color: 'var(--text3)', animation: 'pulse 1s infinite' },
+  syncErr: { fontSize: 13, color: '#e74c3c', cursor: 'default' },
+  resetBtn: { background: 'none', color: 'var(--text3)', fontSize: 11, padding: '4px 8px', borderRadius: 4, flexShrink: 0, border: 'none' },
+  main: { flex: 1, padding: '32px 24px 64px', maxWidth: 1100, margin: '0 auto', width: '100%' },
 }

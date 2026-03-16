@@ -3,9 +3,9 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import Onboarding from '../components/Onboarding'
 
 describe('Onboarding — welcome step', () => {
-  it('shows the iconic 4,680 number', () => {
+  it('shows the iconic 3,900 number', () => {
     render(<Onboarding onComplete={vi.fn()} />)
-    expect(screen.getByText('4,680')).toBeInTheDocument()
+    expect(screen.getByText('3,900')).toBeInTheDocument()
   })
 
   it('shows a Begin button', () => {

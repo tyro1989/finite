@@ -8,6 +8,11 @@ const PROPS = {
   name: 'Alex',
 }
 
+const PEOPLE = [
+  { id: 1, name: 'Mom',  relationship: 'Parent',  age: 65, visitsPerYear: 12, lifeExpectancy: 82, hoursPerVisit: 3 },
+  { id: 2, name: 'Sara', relationship: 'Partner', age: 36, visitsPerYear: 52, lifeExpectancy: 85, hoursPerVisit: 8 },
+]
+
 describe('RealityCheck — rendering', () => {
   it('shows the headline', () => {
     render(<RealityCheck {...PROPS} />)
@@ -21,8 +26,6 @@ describe('RealityCheck — rendering', () => {
 
   it('free weeks number is a positive integer', () => {
     render(<RealityCheck {...PROPS} />)
-    // The hero number can be 3-4 digits. Extract all digit strings from the page and
-    // check at least one is a plausible free-weeks count (100–3000).
     const text = document.body.textContent
     const numbers = [...text.matchAll(/\b(\d[\d,]*)\b/g)]
       .map(m => parseInt(m[1].replace(/,/g, '')))
@@ -62,12 +65,42 @@ describe('RealityCheck — rendering', () => {
 describe('RealityCheck — calculations', () => {
   it('remaining weeks is consistent with 80-year life expectancy minus weeks lived', () => {
     render(<RealityCheck {...PROPS} />)
-    // Total weeks for 80-year life = 4160; 36 years lived ≈ 1878 weeks; remaining ≈ 2282
-    // The text mentioning remaining weeks should be a reasonable number
     const text = document.body.textContent
     const numbers = [...text.matchAll(/(\d[\d,]+)/g)]
       .map(m => parseInt(m[1].replace(/,/g, '')))
       .filter(n => n > 1000 && n < 5000)
+    expect(numbers.length).toBeGreaterThan(0)
+  })
+})
+
+describe('RealityCheck — people section', () => {
+  it('does not show people section when no people provided', () => {
+    render(<RealityCheck {...PROPS} />)
+    expect(screen.queryByText(/time left with the people you love/i)).not.toBeInTheDocument()
+  })
+
+  it('shows people section when people are provided', () => {
+    render(<RealityCheck {...PROPS} people={PEOPLE} />)
+    expect(screen.getByText(/time left with the people you love/i)).toBeInTheDocument()
+  })
+
+  it('shows each person name in the people section', () => {
+    render(<RealityCheck {...PROPS} people={PEOPLE} />)
+    expect(screen.getByText('Mom')).toBeInTheDocument()
+    expect(screen.getByText('Sara')).toBeInTheDocument()
+  })
+
+  it('shows total hours with loved ones', () => {
+    render(<RealityCheck {...PROPS} people={PEOPLE} />)
+    expect(screen.getByText(/total hours left with everyone you love/i)).toBeInTheDocument()
+  })
+
+  it('total hours is positive number', () => {
+    render(<RealityCheck {...PROPS} people={PEOPLE} />)
+    const text = document.body.textContent
+    const numbers = [...text.matchAll(/\b(\d[\d,]+)\b/g)]
+      .map(m => parseInt(m[1].replace(/,/g, '')))
+      .filter(n => n > 50)
     expect(numbers.length).toBeGreaterThan(0)
   })
 })

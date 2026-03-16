@@ -1,4 +1,4 @@
-import { getRealityBreakdown, formatNumber } from '../utils'
+import { getRealityBreakdown, getRemainingVisits, formatNumber } from '../utils'
 
 const BREAKDOWN = [
   { key: 'sleepWeeks',       label: 'Asleep',        desc: '~8 hours every day', color: '#4a7fa5' },
@@ -7,12 +7,19 @@ const BREAKDOWN = [
   { key: 'eatingWeeks',      label: 'Eating & meals',desc: 'Including cooking & meal prep', color: '#5a9a7a' },
 ]
 
-export default function RealityCheck({ birthday, lifeExpectancy, name }) {
+export default function RealityCheck({ birthday, lifeExpectancy, name, people = [] }) {
   const b = getRealityBreakdown(birthday, lifeExpectancy)
 
   const summers = Math.round(b.freeWeeks / 13)
   const freeWeekends = Math.round(b.freeWeeks * 2)
   const holidays = Math.round(b.freeWeeks / 52 * 8)
+
+  const peopleWithHours = people.map(p => {
+    const visits = getRemainingVisits(p.age, p.visitsPerYear, p.lifeExpectancy)
+    const hours = Math.round(visits * (p.hoursPerVisit || 3))
+    return { ...p, visits, hours }
+  })
+  const totalHoursWithLovedOnes = peopleWithHours.reduce((sum, p) => sum + p.hours, 0)
 
   return (
     <div style={s.container}>
@@ -91,6 +98,46 @@ export default function RealityCheck({ birthday, lifeExpectancy, name }) {
         </div>
       </section>
 
+      {/* Time with loved ones */}
+      {peopleWithHours.length > 0 && (
+        <section style={s.section}>
+          <h2 style={s.sectionTitle}>Time left with the people you love</h2>
+          <p style={s.sectionSub}>
+            This is what makes the free weeks real. Not what you do alone — but who you spend them with.
+          </p>
+          <div style={s.peopleGrid}>
+            {peopleWithHours.map(p => {
+              const urgency = p.visits < 50 ? 'critical' : p.visits < 200 ? 'moderate' : 'ok'
+              const col = urgency === 'critical' ? '#e74c3c' : urgency === 'moderate' ? 'var(--accent)' : 'var(--text2)'
+              return (
+                <div key={p.id} style={s.personCard}>
+                  <div style={s.personCardName}>{p.name}</div>
+                  <div style={s.personCardRel}>{p.relationship}</div>
+                  <div style={{ ...s.personCardVisits, color: col }}>{formatNumber(p.visits)}</div>
+                  <div style={s.personCardLabel}>visits</div>
+                  <div style={{ ...s.personCardHours, color: col }}>{formatNumber(p.hours)}</div>
+                  <div style={s.personCardLabel}>hours</div>
+                </div>
+              )
+            })}
+          </div>
+          {totalHoursWithLovedOnes > 0 && (
+            <div style={s.totalHours}>
+              <span style={s.totalHoursNum}>{formatNumber(totalHoursWithLovedOnes)}</span>
+              <span style={s.totalHoursLabel}> total hours left with everyone you love combined</span>
+              <p style={s.totalHoursNote}>
+                That's {Math.round(totalHoursWithLovedOnes / 24)} days.
+                {totalHoursWithLovedOnes < 1000
+                  ? ' Fewer than you imagined.'
+                  : totalHoursWithLovedOnes < 5000
+                  ? ' Less than a year of waking hours.'
+                  : ' Make them count.'}
+              </p>
+            </div>
+          )}
+        </section>
+      )}
+
       <blockquote style={s.quote}>
         <p style={s.quoteText}>"The key is not spending time, but in investing it."</p>
         <footer style={s.quoteAuthor}>— Stephen R. Covey</footer>
@@ -120,6 +167,7 @@ const s = {
   dot: { color: 'var(--text3)' },
   section: { display: 'flex', flexDirection: 'column', gap: 20 },
   sectionTitle: { fontFamily: 'var(--font-serif)', fontSize: 22, color: 'var(--text)', fontWeight: 400 },
+  sectionSub: { fontSize: 14, color: 'var(--text3)', lineHeight: 1.6, marginTop: -12 },
   bars: { display: 'flex', flexDirection: 'column', gap: 18 },
   barRow: { display: 'flex', flexDirection: 'column', gap: 6 },
   barTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' },
@@ -137,6 +185,25 @@ const s = {
   cardNum: { fontFamily: 'var(--font-serif)', fontSize: 36, color: 'var(--text)', lineHeight: 1 },
   cardLabel: { fontSize: 13, color: 'var(--text2)', lineHeight: 1.4 },
   cardNote: { fontSize: 11, color: 'var(--text3)', marginTop: 2 },
+  peopleGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 14 },
+  personCard: {
+    background: 'var(--surface)', border: '1px solid var(--border)',
+    borderRadius: 10, padding: '16px 14px',
+    display: 'flex', flexDirection: 'column', gap: 2,
+  },
+  personCardName: { fontFamily: 'var(--font-serif)', fontSize: 16, color: 'var(--text)', fontWeight: 400 },
+  personCardRel: { fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 },
+  personCardVisits: { fontFamily: 'var(--font-serif)', fontSize: 28, lineHeight: 1, letterSpacing: '-0.01em' },
+  personCardHours: { fontFamily: 'var(--font-serif)', fontSize: 20, lineHeight: 1, letterSpacing: '-0.01em', marginTop: 6 },
+  personCardLabel: { fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' },
+  totalHours: {
+    background: '#0f1a14', border: '1px solid #2a4a35',
+    borderRadius: 10, padding: '20px 24px',
+    display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '6px 0',
+  },
+  totalHoursNum: { fontFamily: 'var(--font-serif)', fontSize: 32, color: '#4ade80', lineHeight: 1 },
+  totalHoursLabel: { fontSize: 15, color: 'var(--text2)', marginLeft: 8 },
+  totalHoursNote: { width: '100%', fontSize: 13, color: 'var(--text3)', marginTop: 8, lineHeight: 1.5 },
   quote: { borderLeft: '2px solid var(--border)', paddingLeft: 20 },
   quoteText: { fontFamily: 'var(--font-serif)', fontSize: 18, color: 'var(--text2)', fontStyle: 'italic', lineHeight: 1.7 },
   quoteAuthor: { fontSize: 12, color: 'var(--text3)', marginTop: 8, letterSpacing: '0.04em' },

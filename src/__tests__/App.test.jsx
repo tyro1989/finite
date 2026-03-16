@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import App from '../App'
 
 // Prevent real HTTP calls in tests
@@ -33,7 +33,7 @@ function saveState(state) {
 describe('App — initial load', () => {
   it('shows Onboarding when localStorage is empty', async () => {
     render(<App />)
-    await waitFor(() => expect(screen.getByText('4,680')).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText('3,900')).toBeInTheDocument())
   })
 
   it('shows the main app when a saved state exists', async () => {
@@ -49,15 +49,16 @@ describe('App — navigation', () => {
   async function renderAndWait() {
     render(<App />)
     await waitFor(() => expect(screen.getByText('Finite')).toBeInTheDocument())
+    return screen.getByRole('navigation')
   }
 
   it('renders all 5 navigation tabs', async () => {
-    await renderAndWait()
-    expect(screen.getByRole('button', { name: /Your Life/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Reality Check/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Goals/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /People/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /This Week/i })).toBeInTheDocument()
+    const nav = await renderAndWait()
+    expect(within(nav).getByRole('button', { name: /Your Life/i })).toBeInTheDocument()
+    expect(within(nav).getByRole('button', { name: /Reality Check/i })).toBeInTheDocument()
+    expect(within(nav).getByRole('button', { name: /Goals/i })).toBeInTheDocument()
+    expect(within(nav).getByRole('button', { name: /People/i })).toBeInTheDocument()
+    expect(within(nav).getByRole('button', { name: /This Week/i })).toBeInTheDocument()
   })
 
   it('defaults to the Grid (Your Life) tab', async () => {
@@ -66,26 +67,26 @@ describe('App — navigation', () => {
   })
 
   it('switches to Reality Check tab', async () => {
-    await renderAndWait()
-    fireEvent.click(screen.getByRole('button', { name: /Reality Check/i }))
+    const nav = await renderAndWait()
+    fireEvent.click(within(nav).getByRole('button', { name: /Reality Check/i }))
     expect(screen.getByText('The Reality Check')).toBeInTheDocument()
   })
 
   it('switches to Goals tab', async () => {
-    await renderAndWait()
-    fireEvent.click(screen.getByRole('button', { name: /Goals/i }))
+    const nav = await renderAndWait()
+    fireEvent.click(within(nav).getByRole('button', { name: /Goals/i }))
     expect(screen.getByRole('heading', { name: /Life Goals/i })).toBeInTheDocument()
   })
 
   it('switches to People tab', async () => {
-    await renderAndWait()
-    fireEvent.click(screen.getByRole('button', { name: /People/i }))
+    const nav = await renderAndWait()
+    fireEvent.click(within(nav).getByRole('button', { name: /People/i }))
     expect(screen.getByText('The People Who Matter')).toBeInTheDocument()
   })
 
   it('switches to This Week tab', async () => {
-    await renderAndWait()
-    fireEvent.click(screen.getByRole('button', { name: /This Week/i }))
+    const nav = await renderAndWait()
+    fireEvent.click(within(nav).getByRole('button', { name: /This Week/i }))
     expect(screen.getByText(/What matters most this week/i)).toBeInTheDocument()
   })
 })

@@ -4,7 +4,7 @@ const STEPS = ['welcome', 'name', 'birthday', 'expectancy', 'reveal']
 
 export default function Onboarding({ onComplete }) {
   const [step, setStep] = useState(0)
-  const [data, setData] = useState({ name: '', birthday: '', lifeExpectancy: 80 })
+  const [data, setData] = useState({ name: '', birthday: '', lifeExpectancy: 75 })
 
   const totalWeeks = data.lifeExpectancy * 52
   const weeksLived = data.birthday
@@ -40,8 +40,8 @@ export default function Onboarding({ onComplete }) {
 
         {STEPS[step] === 'welcome' && (
           <div style={s.step}>
-            <div style={s.bigNum}>4,680</div>
-            <p style={s.bigSub}>weeks in a 90-year life.</p>
+            <div style={s.bigNum}>3,900</div>
+            <p style={s.bigSub}>weeks in a 75-year life.</p>
             <div style={s.divider} />
             <p style={s.body}>You could fit your entire existence on a single poster.</p>
             <p style={s.body}>Most of those boxes are already filled in. The rest are up to you.</p>

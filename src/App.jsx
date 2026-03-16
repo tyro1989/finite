@@ -14,7 +14,7 @@ const defaultState = {
   onboarded: false,
   name: '',
   birthday: '',
-  lifeExpectancy: 80,
+  lifeExpectancy: 75,
   goals: [],
   milestones: {},
   checkins: {},
@@ -158,17 +158,20 @@ export default function App() {
             milestones={state.milestones}
             checkins={state.checkins}
             weeklyIntentions={state.weeklyIntentions}
-            onMilestone={(wi, text) => update({ milestones: { ...state.milestones, [wi]: text } })}
+            goals={state.goals}
+            people={state.people}
+            onMilestone={(wi, text, sentiment) => update({ milestones: { ...state.milestones, [wi]: { text, sentiment: sentiment || 'neutral' } } })}
             onDeleteMilestone={(wi) => {
               const m = { ...state.milestones }
               delete m[wi]
               update({ milestones: m })
             }}
             onIntention={(wi, text) => update({ weeklyIntentions: { ...state.weeklyIntentions, [wi]: text } })}
+            onNavigate={setActiveTab}
           />
         )}
         {activeTab === 'reality' && (
-          <RealityCheck birthday={state.birthday} lifeExpectancy={state.lifeExpectancy} name={state.name} />
+          <RealityCheck birthday={state.birthday} lifeExpectancy={state.lifeExpectancy} name={state.name} people={state.people} />
         )}
         {activeTab === 'goals' && (
           <Goals

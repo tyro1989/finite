@@ -14,6 +14,7 @@ const SAMPLE_PERSON = {
   age: 65,
   visitsPerYear: 12,
   lifeExpectancy: 82,
+  hoursPerVisit: 3,
 }
 
 describe('People — empty state', () => {
@@ -45,11 +46,12 @@ describe('People — add person form', () => {
     expect(screen.getByPlaceholderText(/mom, dad/i)).toBeInTheDocument()
   })
 
-  it('shows relationship, age, visits/year, life expectancy fields', () => {
+  it('shows relationship, age, visits/year, hours/visit, life expectancy fields', () => {
     render(<People {...BASE_PROPS} />)
     fireEvent.click(screen.getByRole('button', { name: /add someone who matters/i }))
     expect(screen.getByText(/their current age/i)).toBeInTheDocument()
     expect(screen.getByText(/visits per year/i)).toBeInTheDocument()
+    expect(screen.getByText(/hours per visit/i)).toBeInTheDocument()
     expect(screen.getByText(/their life expectancy/i)).toBeInTheDocument()
   })
 
@@ -59,7 +61,7 @@ describe('People — add person form', () => {
     expect(screen.getByRole('button', { name: /^add person$/i })).toBeDisabled()
   })
 
-  it('calls onUpdate with the new person on submit', () => {
+  it('calls onUpdate with the new person including hoursPerVisit on submit', () => {
     const onUpdate = vi.fn()
     render(<People {...BASE_PROPS} onUpdate={onUpdate} />)
     fireEvent.click(screen.getByRole('button', { name: /add someone who matters/i }))
@@ -75,6 +77,7 @@ describe('People — add person form', () => {
     expect(updatedPeople).toHaveLength(1)
     expect(updatedPeople[0].name).toBe('Dad')
     expect(updatedPeople[0].age).toBe(70)
+    expect(updatedPeople[0].hoursPerVisit).toBeGreaterThan(0)
   })
 
   it('closes form on Cancel', () => {
@@ -105,8 +108,23 @@ describe('People — existing person card', () => {
 
   it('shows correct visit count — (82-65)*12 = 204', () => {
     render(<People {...props} />)
-    // 204 visits
     expect(screen.getByText('204')).toBeInTheDocument()
+  })
+
+  it('shows "hours together" label', () => {
+    render(<People {...props} />)
+    expect(screen.getByText(/hours together/i)).toBeInTheDocument()
+  })
+
+  it('shows correct total hours — 204 visits * 3h = 612', () => {
+    render(<People {...props} />)
+    expect(screen.getByText('612')).toBeInTheDocument()
+  })
+
+  it('shows hours perspective message', () => {
+    render(<People {...props} />)
+    // 612 hours = ~25 days — should show "days" perspective
+    expect(screen.getByText(/days/i)).toBeInTheDocument()
   })
 
   it('shows urgency message for low visit count', () => {

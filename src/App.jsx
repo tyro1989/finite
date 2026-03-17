@@ -31,11 +31,11 @@ function loadLocalState() {
 }
 
 const TABS = [
-  { id: 'grid',    label: 'Your Life' },
-  { id: 'reality', label: 'Reality Check' },
-  { id: 'goals',   label: 'Goals' },
-  { id: 'people',  label: 'People' },
-  { id: 'checkin', label: 'This Week' },
+  { id: 'grid',    label: 'Your Life',     icon: '◉' },
+  { id: 'reality', label: 'Reality Check',  icon: '◷' },
+  { id: 'goals',   label: 'Goals',          icon: '◎' },
+  { id: 'people',  label: 'People',         icon: '♡' },
+  { id: 'checkin', label: 'This Week',      icon: '↻' },
 ]
 
 export default function App() {
@@ -53,13 +53,11 @@ export default function App() {
       let userId = localStorage.getItem(USER_ID_KEY)
 
       if (!userId) {
-        // First visit — create a new user in the DB
         try {
           const { userId: newId } = await createUser()
           userId = newId
           localStorage.setItem(USER_ID_KEY, userId)
         } catch {
-          // API unavailable — fall back to localStorage-only mode
           setState(loadLocalState())
           setLoading(false)
           return
@@ -68,18 +66,15 @@ export default function App() {
 
       userIdRef.current = userId
 
-      // Try loading from backend
       try {
         const data = await loadUser(userId)
         if (data) {
           const { userId: _id, ...rest } = data
           setState({ ...defaultState, ...rest })
         } else {
-          // userId exists locally but not in DB (e.g. DB was wiped) — use localStorage
           setState(loadLocalState())
         }
       } catch {
-        // API unavailable — use localStorage cache
         setState(loadLocalState())
         setSyncError(true)
       }
@@ -124,29 +119,41 @@ export default function App() {
 
   return (
     <div style={s.app}>
-      <nav style={s.nav}>
+      {/* Top bar: brand + sync + reset */}
+      <header style={s.header}>
         <div style={s.brand}>Finite</div>
+        <div style={s.headerRight}>
+          <div style={s.syncStatus}>
+            {syncing && <span style={s.syncing}>Saving...</span>}
+            {syncError && <span style={s.syncErr} title="Sync failed — saved locally">Offline</span>}
+          </div>
+          <button
+            style={s.resetBtn}
+            onClick={() => { if (window.confirm('Reset all data? This cannot be undone.')) setState(defaultState) }}
+          >
+            Reset
+          </button>
+        </div>
+      </header>
+
+      {/* Tab bar */}
+      <nav style={s.nav}>
         <div style={s.tabs}>
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              style={{ ...s.tab, ...(activeTab === tab.id ? s.tabActive : {}) }}
-              onClick={() => setActiveTab(tab.id)}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {TABS.map(tab => {
+            const isActive = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                style={{ ...s.tab, ...(isActive ? s.tabActive : {}) }}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <span style={{ ...s.tabIcon, ...(isActive ? s.tabIconActive : {}) }}>{tab.icon}</span>
+                <span style={{ ...s.tabLabel, ...(isActive ? s.tabLabelActive : {}) }}>{tab.label}</span>
+                {isActive && <div style={s.tabIndicator} />}
+              </button>
+            )
+          })}
         </div>
-        <div style={s.syncStatus}>
-          {syncing && <span style={s.syncing}>↑</span>}
-          {syncError && <span style={s.syncErr} title="Sync failed — saved locally">!</span>}
-        </div>
-        <button
-          style={s.resetBtn}
-          onClick={() => { if (window.confirm('Reset all data? This cannot be undone.')) setState(defaultState) }}
-        >
-          Reset
-        </button>
       </nav>
 
       <main style={s.main}>
@@ -212,19 +219,77 @@ function LoadingScreen() {
 
 const s = {
   app: { minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' },
+
+  // ── Top header: brand + sync ──
+  header: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '12px 24px 0',
+    flexShrink: 0,
+  },
+  brand: {
+    fontFamily: 'var(--font-serif)', fontSize: 20, color: 'var(--accent)',
+    letterSpacing: '0.02em', fontWeight: 400,
+  },
+  headerRight: { display: 'flex', alignItems: 'center', gap: 12 },
+  syncStatus: { display: 'flex', alignItems: 'center', gap: 4 },
+  syncing: { fontSize: 11, color: 'var(--text3)', letterSpacing: '0.04em' },
+  syncErr: { fontSize: 11, color: '#e74c3c', letterSpacing: '0.04em' },
+  resetBtn: {
+    background: 'none', color: 'var(--text3)', fontSize: 11, padding: '4px 10px',
+    borderRadius: 4, border: '1px solid var(--border)', letterSpacing: '0.04em',
+  },
+
+  // ── Tab bar ──
   nav: {
     position: 'sticky', top: 0, zIndex: 100,
-    background: 'rgba(10,10,10,0.96)', backdropFilter: 'blur(12px)',
+    background: 'rgba(10,10,10,0.97)', backdropFilter: 'blur(16px)',
     borderBottom: '1px solid var(--border)',
-    padding: '0 24px', display: 'flex', alignItems: 'center', gap: 24, height: 54, flexShrink: 0,
+    padding: '0 24px',
+    flexShrink: 0,
   },
-  brand: { fontFamily: 'var(--font-serif)', fontSize: 15, color: 'var(--accent)', letterSpacing: '0.02em', whiteSpace: 'nowrap', flexShrink: 0 },
-  tabs: { display: 'flex', gap: 2, flex: 1, overflowX: 'auto', scrollbarWidth: 'none' },
-  tab: { background: 'none', color: 'var(--text3)', fontSize: 11, fontWeight: 500, padding: '5px 12px', borderRadius: 5, whiteSpace: 'nowrap', letterSpacing: '0.06em', textTransform: 'uppercase', border: 'none' },
-  tabActive: { color: 'var(--accent)', background: 'rgba(201,168,76,0.08)' },
-  syncStatus: { display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 },
-  syncing: { fontSize: 14, color: 'var(--text3)', animation: 'pulse 1s infinite' },
-  syncErr: { fontSize: 13, color: '#e74c3c', cursor: 'default' },
-  resetBtn: { background: 'none', color: 'var(--text3)', fontSize: 11, padding: '4px 8px', borderRadius: 4, flexShrink: 0, border: 'none' },
-  main: { flex: 1, padding: '32px 24px 64px', maxWidth: 1100, margin: '0 auto', width: '100%' },
+  tabs: {
+    display: 'flex', gap: 0,
+    maxWidth: 1100, margin: '0 auto', width: '100%',
+    overflowX: 'auto', scrollbarWidth: 'none',
+  },
+  tab: {
+    position: 'relative',
+    background: 'none', border: 'none',
+    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
+    padding: '14px 20px 12px',
+    cursor: 'pointer',
+    minWidth: 0,
+    flexShrink: 0,
+    transition: 'all 0.15s ease',
+  },
+  tabActive: {},
+  tabIcon: {
+    fontSize: 18, lineHeight: 1,
+    color: 'var(--text3)',
+    transition: 'color 0.15s ease',
+  },
+  tabIconActive: {
+    color: 'var(--accent)',
+  },
+  tabLabel: {
+    fontSize: 11, fontWeight: 500, letterSpacing: '0.06em',
+    color: 'var(--text3)',
+    whiteSpace: 'nowrap',
+    transition: 'color 0.15s ease',
+  },
+  tabLabelActive: {
+    color: 'var(--text)',
+  },
+  tabIndicator: {
+    position: 'absolute', bottom: 0, left: '20%', right: '20%',
+    height: 2,
+    background: 'var(--accent)',
+    borderRadius: '2px 2px 0 0',
+  },
+
+  // ── Main content ──
+  main: {
+    flex: 1, padding: '32px 24px 64px',
+    maxWidth: 1100, margin: '0 auto', width: '100%',
+  },
 }

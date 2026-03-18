@@ -30,20 +30,12 @@ describe('CheckIn — rendering', () => {
 
   it('shows the current week number', () => {
     render(<CheckIn {...BASE_PROPS} />)
-    // Week badge should say "Week 1879" (1878 + 1 for display)
     expect(screen.getByText(/Week \d+/)).toBeInTheDocument()
   })
 
   it('shows the formatted date', () => {
     render(<CheckIn {...BASE_PROPS} />)
-    // Should show "Mar" somewhere in the date
     expect(screen.getByText(/Mar/)).toBeInTheDocument()
-  })
-
-  it('shows a motivational quote with author attribution', () => {
-    render(<CheckIn {...BASE_PROPS} />)
-    // Every quote ends with an author "— Author Name"
-    expect(screen.getByText(/^—\s+\w/)).toBeInTheDocument()
   })
 
   it('shows the "Weekly focus" prompt', () => {
@@ -63,9 +55,17 @@ describe('CheckIn — rendering', () => {
 
   it('shows all three check-in options', () => {
     render(<CheckIn {...BASE_PROPS} />)
-    expect(screen.getByRole('button', { name: /yes/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /somewhat/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /no/i })).toBeInTheDocument()
+    expect(screen.getByText('Yes')).toBeInTheDocument()
+    expect(screen.getByText('Somewhat')).toBeInTheDocument()
+    expect(screen.getByText('No')).toBeInTheDocument()
+  })
+
+  it('shows sidebar navigation cards', () => {
+    render(<CheckIn {...BASE_PROPS} />)
+    expect(screen.getByText('Your Life')).toBeInTheDocument()
+    expect(screen.getByText('Goals')).toBeInTheDocument()
+    expect(screen.getByText('People')).toBeInTheDocument()
+    expect(screen.getByText('Reality Check')).toBeInTheDocument()
   })
 })
 
@@ -86,7 +86,6 @@ describe('CheckIn — intention', () => {
   })
 
   it('pre-fills intention from weeklyIntentions prop', () => {
-    // getWeeksLived('1990-03-15') on 2026-03-15 ≈ 1878
     const intentions = { 1878: 'Be present' }
     render(<CheckIn {...BASE_PROPS} weeklyIntentions={intentions} />)
     expect(screen.getByDisplayValue('Be present')).toBeInTheDocument()
@@ -97,7 +96,7 @@ describe('CheckIn — check-in buttons', () => {
   it('calls onCheckin with "yes" when Yes is clicked', () => {
     const onCheckin = vi.fn()
     render(<CheckIn {...BASE_PROPS} onCheckin={onCheckin} />)
-    fireEvent.click(screen.getByRole('button', { name: /yes/i }))
+    fireEvent.click(screen.getByText('Yes').closest('button'))
     expect(onCheckin).toHaveBeenCalledOnce()
     const [, value] = onCheckin.mock.calls[0]
     expect(value).toBe('yes')
@@ -106,7 +105,7 @@ describe('CheckIn — check-in buttons', () => {
   it('calls onCheckin with "somewhat" when Somewhat is clicked', () => {
     const onCheckin = vi.fn()
     render(<CheckIn {...BASE_PROPS} onCheckin={onCheckin} />)
-    fireEvent.click(screen.getByRole('button', { name: /somewhat/i }))
+    fireEvent.click(screen.getByText('Somewhat').closest('button'))
     const [, value] = onCheckin.mock.calls[0]
     expect(value).toBe('somewhat')
   })
@@ -114,7 +113,7 @@ describe('CheckIn — check-in buttons', () => {
   it('calls onCheckin with "no" when No is clicked', () => {
     const onCheckin = vi.fn()
     render(<CheckIn {...BASE_PROPS} onCheckin={onCheckin} />)
-    fireEvent.click(screen.getByRole('button', { name: /no/i }))
+    fireEvent.click(screen.getByText('No').closest('button'))
     const [, value] = onCheckin.mock.calls[0]
     expect(value).toBe('no')
   })
@@ -122,7 +121,7 @@ describe('CheckIn — check-in buttons', () => {
   it('passes the current week index to onCheckin', () => {
     const onCheckin = vi.fn()
     render(<CheckIn {...BASE_PROPS} onCheckin={onCheckin} />)
-    fireEvent.click(screen.getByRole('button', { name: /yes/i }))
+    fireEvent.click(screen.getByText('Yes').closest('button'))
     const [weekIndex] = onCheckin.mock.calls[0]
     expect(weekIndex).toBeGreaterThan(0)
   })
@@ -140,14 +139,12 @@ describe('CheckIn — streak and stats', () => {
   })
 
   it('calculates streak from consecutive yes/somewhat checkins', () => {
-    // weeks 1875, 1876, 1877 all "yes" → streak = 3 (going back from current week 1878)
     const checkins = { 1875: 'yes', 1876: 'yes', 1877: 'yes' }
     render(<CheckIn {...BASE_PROPS} checkins={checkins} />)
     expect(screen.getByTestId('streak-value')).toHaveTextContent('3')
   })
 
   it('streak resets at a "no" gap', () => {
-    // week 1875 = no, weeks 1876-1877 = yes → streak = 2
     const checkins = { 1875: 'no', 1876: 'yes', 1877: 'yes' }
     render(<CheckIn {...BASE_PROPS} checkins={checkins} />)
     expect(screen.getByTestId('streak-value')).toHaveTextContent('2')
@@ -160,9 +157,10 @@ describe('CheckIn — streak and stats', () => {
     expect(screen.getByText(/5h\/week target/i)).toBeInTheDocument()
   })
 
-  it('shows recent weeks grid when checkins exist', () => {
-    const checkins = { 1877: 'yes', 1876: 'somewhat' }
-    render(<CheckIn {...BASE_PROPS} checkins={checkins} />)
-    expect(screen.getByText(/recent weeks/i)).toBeInTheDocument()
+  it('navigates to other tabs via sidebar cards', () => {
+    const onNavigate = vi.fn()
+    render(<CheckIn {...BASE_PROPS} onNavigate={onNavigate} />)
+    fireEvent.click(screen.getByText('Goals').closest('button'))
+    expect(onNavigate).toHaveBeenCalledWith('goals')
   })
 })

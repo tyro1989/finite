@@ -147,8 +147,7 @@ export default function App() {
                 style={{ ...s.tab, ...(isActive ? s.tabActive : {}) }}
                 onClick={() => setActiveTab(tab.id)}
               >
-                <span style={{ ...s.tabIcon, ...(isActive ? s.tabIconActive : {}) }}>{tab.icon}</span>
-                <span style={{ ...s.tabLabel, ...(isActive ? s.tabLabelActive : {}) }}>{tab.label}</span>
+                <span style={{ ...s.tabLabel, ...(isActive ? { color: '#f4f0e8', fontWeight: 600 } : {}) }}>{tab.label}</span>
                 {isActive && <div style={s.tabIndicator} />}
               </button>
             )
@@ -248,46 +247,29 @@ const s = {
     flexShrink: 0,
   },
   tabs: {
-    display: 'flex', gap: 6,
+    display: 'flex', gap: 0,
     maxWidth: 1100, margin: '0 auto', width: '100%',
     overflowX: 'auto', scrollbarWidth: 'none',
-    padding: '10px 0',
   },
   tab: {
     position: 'relative',
-    background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)',
-    display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 10,
-    padding: '14px 24px',
-    borderRadius: 10,
+    background: 'none', border: 'none',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: '14px 20px',
     cursor: 'pointer',
-    minWidth: 0,
-    flexShrink: 0,
-    transition: 'all 0.15s ease',
-  },
-  tabActive: {
-    background: 'rgba(201,168,76,0.14)',
-    border: '1px solid rgba(201,168,76,0.3)',
-  },
-  tabIcon: {
-    fontSize: 20, lineHeight: 1,
-    color: '#7a7570',
     transition: 'color 0.15s ease',
   },
-  tabIconActive: {
-    color: 'var(--accent)',
-  },
+  tabActive: {},
   tabLabel: {
-    fontSize: 15, fontWeight: 500, letterSpacing: '0.01em',
-    color: '#9a9590',
+    fontSize: 14, fontWeight: 500, letterSpacing: '0.03em',
+    color: '#7a7570',
     whiteSpace: 'nowrap',
     transition: 'color 0.15s ease',
   },
-  tabLabelActive: {
-    color: '#f4f0e8',
-    fontWeight: 600,
-  },
   tabIndicator: {
-    display: 'none',
+    position: 'absolute', bottom: 0, left: 12, right: 12,
+    height: 2, borderRadius: 1,
+    background: 'var(--accent)',
   },
 
   // ── Main content ──

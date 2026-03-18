@@ -20,6 +20,7 @@ const defaultState = {
   checkins: {},
   people: [],
   weeklyIntentions: {},
+  weeklyGoalHours: {},
 }
 
 function loadLocalState() {
@@ -196,8 +197,15 @@ export default function App() {
             goals={state.goals}
             checkins={state.checkins}
             weeklyIntentions={state.weeklyIntentions}
+            weeklyGoalHours={state.weeklyGoalHours || {}}
             onCheckin={(wi, val) => update({ checkins: { ...state.checkins, [wi]: val } })}
             onIntention={(wi, text) => update({ weeklyIntentions: { ...state.weeklyIntentions, [wi]: text } })}
+            onGoalHours={(wi, goalId, hours) => {
+              const weekData = { ...(state.weeklyGoalHours || {})[wi] }
+              if (hours > 0) weekData[goalId] = hours
+              else delete weekData[goalId]
+              update({ weeklyGoalHours: { ...state.weeklyGoalHours, [wi]: weekData } })
+            }}
           />
         )}
       </main>

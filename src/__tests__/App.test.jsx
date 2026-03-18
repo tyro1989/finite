@@ -87,7 +87,7 @@ describe('App — navigation', () => {
   it('switches to This Week tab', async () => {
     const nav = await renderAndWait()
     fireEvent.click(within(nav).getByRole('button', { name: /This Week/i }))
-    expect(screen.getByText(/What matters most this week/i)).toBeInTheDocument()
+    expect(screen.getByText(/Weekly focus/i)).toBeInTheDocument()
   })
 })
 

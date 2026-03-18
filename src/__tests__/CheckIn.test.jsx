@@ -10,8 +10,10 @@ const BASE_PROPS = {
   goals: [],
   checkins: {},
   weeklyIntentions: {},
+  weeklyGoalHours: {},
   onCheckin: vi.fn(),
   onIntention: vi.fn(),
+  onGoalHours: vi.fn(),
 }
 
 describe('CheckIn — rendering', () => {
@@ -39,14 +41,14 @@ describe('CheckIn — rendering', () => {
     expect(screen.getByText(/^—\s+\w/)).toBeInTheDocument()
   })
 
-  it('shows the "What matters most this week?" prompt', () => {
+  it('shows the "Weekly focus" prompt', () => {
     render(<CheckIn {...BASE_PROPS} />)
-    expect(screen.getByText(/what matters most this week/i)).toBeInTheDocument()
+    expect(screen.getByText(/weekly focus/i)).toBeInTheDocument()
   })
 
-  it('shows intention textarea', () => {
+  it('shows intention input', () => {
     render(<CheckIn {...BASE_PROPS} />)
-    expect(screen.getByPlaceholderText(/this week i will focus on/i)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/one sentence/i)).toBeInTheDocument()
   })
 
   it('shows "Did this week move you forward?" prompt', () => {
@@ -67,10 +69,10 @@ describe('CheckIn — intention', () => {
     const onIntention = vi.fn()
     render(<CheckIn {...BASE_PROPS} onIntention={onIntention} />)
 
-    fireEvent.change(screen.getByPlaceholderText(/this week i will focus on/i), {
+    fireEvent.change(screen.getByPlaceholderText(/one sentence/i), {
       target: { value: 'Write 1000 words' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /save intention/i }))
+    fireEvent.click(screen.getByRole('button', { name: /save/i }))
 
     expect(onIntention).toHaveBeenCalledOnce()
     const [weekIndex, text] = onIntention.mock.calls[0]
@@ -146,10 +148,11 @@ describe('CheckIn — streak and stats', () => {
     expect(screen.getByTestId('streak-value')).toHaveTextContent('2')
   })
 
-  it('shows goals hint when goals are provided', () => {
+  it('shows goal tracker when goals are provided', () => {
     const goals = [{ id: 1, title: 'Write a novel', targetAge: 50, hoursPerWeek: 5 }]
     render(<CheckIn {...BASE_PROPS} goals={goals} />)
     expect(screen.getByText(/write a novel/i)).toBeInTheDocument()
+    expect(screen.getByText(/5h\/week target/i)).toBeInTheDocument()
   })
 
   it('shows recent weeks grid when checkins exist', () => {

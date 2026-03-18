@@ -67,12 +67,13 @@ button {
   transition: all 0.2s ease;
 }
 
-/* Tab hover — can't do inline */
+/* Tab hover */
 nav button:hover {
-  background: rgba(255,255,255,0.03);
+  background: rgba(255,255,255,0.06);
+  border-color: rgba(255,255,255,0.08);
 }
 nav button:hover span {
-  color: var(--text2);
+  color: var(--text);
 }
 
 /* Scrollbar hide for tab bar */

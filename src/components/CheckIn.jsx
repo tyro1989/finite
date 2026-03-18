@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { getWeeksLived, getDateAtWeek, formatDate } from '../utils'
+import { getWeeksLived, getDateAtWeek, formatDate, getRemainingVisits } from '../utils'
 
 const QUOTES = [
   { text: "How we spend our days is how we spend our lives.", author: "Annie Dillard" },
@@ -18,8 +18,8 @@ const QUOTES = [
 
 const CHECKIN_OPTIONS = [
   { value: 'yes',      label: 'Yes',      sub: 'Made real progress toward what matters', bg: '#2a4a2a', border: '#3a6a3a' },
-  { value: 'somewhat', label: 'Somewhat', sub: 'Partial progress — some good, some drift', bg: '#3a3010', border: '#5a4818' },
-  { value: 'no',       label: 'No',       sub: 'This week slipped by without intention', bg: '#2a1a1a', border: '#3e2020' },
+  { value: 'somewhat', label: 'Somewhat', sub: 'Some progress, some drift', bg: '#3a3010', border: '#5a4818' },
+  { value: 'no',       label: 'No',       sub: 'This week slipped by', bg: '#2a1a1a', border: '#3e2020' },
 ]
 
 function getWeekEndDate(startDate) {
@@ -32,10 +32,114 @@ function formatShortDate(date) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-export default function CheckIn({ birthday, goals, checkins, weeklyIntentions, weeklyGoalHours, onCheckin, onIntention, onGoalHours }) {
+// ── Insight generation ──
+function generateInsights({ goals, people, checkins, weeklyGoalHours, currentWeek, lifeExpectancy }) {
+  const insights = []
+
+  // 1. Sentiment trend — 3+ consecutive "no" weeks
+  let noStreak = 0
+  for (let i = currentWeek - 1; i >= Math.max(0, currentWeek - 6); i--) {
+    if (checkins[i] === 'no') noStreak++
+    else break
+  }
+  if (noStreak >= 3) {
+    insights.push({
+      type: 'warning',
+      text: `${noStreak} weeks in a row marked "no." Something is off. What's one small thing you can change this week?`,
+    })
+  }
+
+  // 2. Positive streak celebration
+  let goodStreak = 0
+  for (let i = currentWeek - 1; i >= 0; i--) {
+    if (checkins[i] === 'yes' || checkins[i] === 'somewhat') goodStreak++
+    else break
+  }
+  if (goodStreak >= 4) {
+    insights.push({
+      type: 'success',
+      text: `${goodStreak}-week streak of intentional living. You're building something real.`,
+    })
+  }
+
+  // 3. Goal neglect — check last 4 weeks for each goal
+  goals.forEach(goal => {
+    let totalHours = 0
+    let weeksChecked = 0
+    for (let i = currentWeek - 1; i >= Math.max(0, currentWeek - 4); i--) {
+      weeksChecked++
+      totalHours += (weeklyGoalHours[i] || {})[goal.id] || 0
+    }
+    if (weeksChecked >= 2) {
+      const avgHours = totalHours / weeksChecked
+      if (avgHours < goal.hoursPerWeek * 0.3) {
+        insights.push({
+          type: 'nudge',
+          text: `You committed ${goal.hoursPerWeek}h/week to "${goal.title}" but averaged ${avgHours.toFixed(1)}h over the last ${weeksChecked} weeks. Is this still a priority?`,
+        })
+      }
+    }
+  })
+
+  // 4. People urgency — people with very few visits remaining
+  people.forEach(person => {
+    const visits = getRemainingVisits(person.age, person.visitsPerYear, person.lifeExpectancy || 82)
+    if (visits <= 50) {
+      const totalHours = Math.round(visits * (person.hoursPerVisit || 3))
+      insights.push({
+        type: 'people',
+        text: `You have ~${visits} visits left with ${person.name} (~${totalHours} hours total). Reach out this week.`,
+      })
+    } else if (visits <= 150) {
+      insights.push({
+        type: 'people',
+        text: `~${visits} visits remaining with ${person.name}. Time with them is more limited than it feels.`,
+      })
+    }
+  })
+
+  // 5. Setup nudges
+  if (goals.length === 0) {
+    insights.push({
+      type: 'setup',
+      text: 'You haven\'t set any life goals yet. A week without direction is a week that drifts.',
+      action: 'goals',
+    })
+  }
+  if (people.length === 0) {
+    insights.push({
+      type: 'setup',
+      text: 'Add the people who matter most to you. You might be surprised how little time you have left with them.',
+      action: 'people',
+    })
+  }
+
+  return insights
+}
+
+const INSIGHT_STYLES = {
+  warning: { borderColor: '#e74c3c', icon: '!' },
+  success: { borderColor: '#6a9a5a', icon: '~' },
+  nudge:   { borderColor: 'var(--accent)', icon: '>' },
+  people:  { borderColor: '#7a5fa5', icon: '*' },
+  setup:   { borderColor: 'var(--text3)', icon: '+' },
+}
+
+export default function CheckIn({
+  birthday, lifeExpectancy, name, goals, people, checkins, weeklyIntentions,
+  weeklyGoalHours, weeklyReflections, onCheckin, onIntention, onGoalHours,
+  onReflection, onNavigate,
+}) {
   const currentWeek = getWeeksLived(birthday)
+  const existingReflection = weeklyReflections[currentWeek] || {}
   const [intention, setIntention] = useState(weeklyIntentions[currentWeek] || '')
+  const [reflection, setReflection] = useState({
+    wins: existingReflection.wins || '',
+    struggles: existingReflection.struggles || '',
+    change: existingReflection.change || '',
+  })
   const [saved, setSaved] = useState(false)
+  const [reflectionSaved, setReflectionSaved] = useState(false)
 
   const quote = QUOTES[currentWeek % QUOTES.length]
   const currentCheckin = checkins[currentWeek]
@@ -45,13 +149,22 @@ export default function CheckIn({ birthday, goals, checkins, weeklyIntentions, w
 
   const totalHoursLogged = Object.values(thisWeekHours).reduce((sum, h) => sum + h, 0)
 
-  const handleSave = () => {
+  // Insights
+  const insights = generateInsights({ goals, people, checkins, weeklyGoalHours, currentWeek, lifeExpectancy })
+
+  const handleSaveIntention = () => {
     onIntention(currentWeek, intention)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
 
-  // Streak: consecutive weeks with yes/somewhat going backward
+  const handleSaveReflection = () => {
+    onReflection(currentWeek, reflection)
+    setReflectionSaved(true)
+    setTimeout(() => setReflectionSaved(false), 2000)
+  }
+
+  // Streak
   let streak = 0
   for (let i = currentWeek - 1; i >= 0; i--) {
     if (checkins[i] === 'yes' || checkins[i] === 'somewhat') streak++
@@ -68,7 +181,7 @@ export default function CheckIn({ birthday, goals, checkins, weeklyIntentions, w
     return total + Object.values(weekData).reduce((s, h) => s + h, 0)
   }, 0)
 
-  // Recent 12 weeks for mini grid
+  // Recent 12 weeks
   const recentWeeks = Array.from({ length: Math.min(12, currentWeek + 1) }, (_, i) => currentWeek - i).reverse()
 
   return (
@@ -79,7 +192,8 @@ export default function CheckIn({ birthday, goals, checkins, weeklyIntentions, w
           <span style={s.weekBadge}>Week {currentWeek + 1}</span>
           <span style={s.dateRange}>{formatShortDate(weekStart)} – {formatShortDate(weekEnd)}, {weekStart.getFullYear()}</span>
         </div>
-        <h1 style={s.headline}>This Week</h1>
+        <h1 style={s.headline}>{name ? `${name}'s Week` : 'This Week'}</h1>
+        <p style={s.subline}>What will you do with these 168 hours?</p>
       </div>
 
       {/* ── Quote ── */}
@@ -87,6 +201,49 @@ export default function CheckIn({ birthday, goals, checkins, weeklyIntentions, w
         <p style={s.quoteText}>"{quote.text}"</p>
         <p style={s.quoteAuthor}>— {quote.author}</p>
       </div>
+
+      {/* ── Insights ── */}
+      {insights.length > 0 && (
+        <section style={s.section}>
+          <h2 style={s.sectionTitle}>What you should know</h2>
+          <div style={s.insightList}>
+            {insights.map((insight, i) => {
+              const style = INSIGHT_STYLES[insight.type]
+              return (
+                <div key={i} style={{ ...s.insightCard, borderLeftColor: style.borderColor }}>
+                  <p style={s.insightText}>{insight.text}</p>
+                  {insight.action && onNavigate && (
+                    <button
+                      style={s.insightAction}
+                      onClick={() => onNavigate(insight.action)}
+                    >
+                      Go to {insight.action} →
+                    </button>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* ── Weekly Focus ── */}
+      <section style={s.section}>
+        <h2 style={s.sectionTitle}>Weekly focus</h2>
+        <div style={s.focusRow}>
+          <input
+            type="text"
+            style={s.focusInput}
+            value={intention}
+            onChange={e => setIntention(e.target.value)}
+            placeholder="One sentence — what matters most this week?"
+            onKeyDown={e => e.key === 'Enter' && handleSaveIntention()}
+          />
+          <button style={s.saveBtn} onClick={handleSaveIntention}>
+            {saved ? '✓' : 'Save'}
+          </button>
+        </div>
+      </section>
 
       {/* ── Goal Hours Tracker ── */}
       <section style={s.section}>
@@ -99,7 +256,12 @@ export default function CheckIn({ birthday, goals, checkins, weeklyIntentions, w
 
         {goals.length === 0 ? (
           <div style={s.emptyGoals}>
-            <p style={s.emptyText}>No goals set yet. Add goals in the Goals tab to track weekly hours here.</p>
+            <p style={s.emptyText}>No goals set yet.</p>
+            {onNavigate && (
+              <button style={s.emptyAction} onClick={() => onNavigate('goals')}>
+                Add your first life goal →
+              </button>
+            )}
           </div>
         ) : (
           <div style={s.goalList}>
@@ -141,22 +303,44 @@ export default function CheckIn({ birthday, goals, checkins, weeklyIntentions, w
         )}
       </section>
 
-      {/* ── Weekly Focus ── */}
+      {/* ── Weekly Reflection (Journal) ── */}
       <section style={s.section}>
-        <h2 style={s.sectionTitle}>Weekly focus</h2>
-        <div style={s.focusRow}>
-          <input
-            type="text"
-            style={s.focusInput}
-            value={intention}
-            onChange={e => setIntention(e.target.value)}
-            placeholder="One sentence — what matters most this week?"
-            onKeyDown={e => e.key === 'Enter' && handleSave()}
-          />
-          <button style={s.saveBtn} onClick={handleSave}>
-            {saved ? '✓' : 'Save'}
-          </button>
+        <h2 style={s.sectionTitle}>Weekly reflection</h2>
+        <div style={s.reflectionGrid}>
+          <div style={s.reflectionField}>
+            <label style={s.reflectionLabel}>What went well?</label>
+            <textarea
+              style={s.reflectionInput}
+              value={reflection.wins}
+              onChange={e => setReflection(r => ({ ...r, wins: e.target.value }))}
+              placeholder="Wins, progress, good decisions..."
+              rows={2}
+            />
+          </div>
+          <div style={s.reflectionField}>
+            <label style={s.reflectionLabel}>What didn't go as planned?</label>
+            <textarea
+              style={s.reflectionInput}
+              value={reflection.struggles}
+              onChange={e => setReflection(r => ({ ...r, struggles: e.target.value }))}
+              placeholder="Missed targets, distractions, regrets..."
+              rows={2}
+            />
+          </div>
+          <div style={s.reflectionField}>
+            <label style={s.reflectionLabel}>One thing I'll do differently next week</label>
+            <textarea
+              style={s.reflectionInput}
+              value={reflection.change}
+              onChange={e => setReflection(r => ({ ...r, change: e.target.value }))}
+              placeholder="A specific, actionable change..."
+              rows={2}
+            />
+          </div>
         </div>
+        <button style={s.saveBtn} onClick={handleSaveReflection}>
+          {reflectionSaved ? '✓ Saved' : 'Save reflection'}
+        </button>
       </section>
 
       {/* ── Sentiment Check-in ── */}
@@ -232,14 +416,15 @@ const s = {
   container: { display: 'flex', flexDirection: 'column', gap: 32, maxWidth: 680 },
 
   // Header
-  header: { display: 'flex', flexDirection: 'column', gap: 8 },
+  header: { display: 'flex', flexDirection: 'column', gap: 6 },
   weekRange: { display: 'flex', alignItems: 'center', gap: 12 },
   weekBadge: {
     fontSize: 11, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.1em',
     fontWeight: 600,
   },
   dateRange: { fontSize: 14, color: 'var(--text2)', letterSpacing: '0.01em' },
-  headline: { fontFamily: 'var(--font-serif)', fontSize: 'clamp(28px, 5vw, 44px)', color: 'var(--text)', fontWeight: 400, margin: 0 },
+  headline: { fontFamily: 'var(--font-serif)', fontSize: 'clamp(28px, 5vw, 40px)', color: 'var(--text)', fontWeight: 400, margin: 0 },
+  subline: { fontSize: 14, color: 'var(--text3)', fontStyle: 'italic' },
 
   // Quote
   quoteBox: {
@@ -254,16 +439,44 @@ const s = {
   section: { display: 'flex', flexDirection: 'column', gap: 12 },
   sectionHeader: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 },
   sectionTitle: { fontFamily: 'var(--font-serif)', fontSize: 20, color: 'var(--text)', fontWeight: 400, margin: 0 },
-  totalBadge: {
-    fontSize: 13, color: 'var(--accent)', fontWeight: 600,
+  totalBadge: { fontSize: 13, color: 'var(--accent)', fontWeight: 600 },
+
+  // Insights
+  insightList: { display: 'flex', flexDirection: 'column', gap: 8 },
+  insightCard: {
+    background: 'var(--surface)', borderRadius: 8, padding: '14px 18px',
+    borderLeft: '3px solid var(--accent)',
+    display: 'flex', flexDirection: 'column', gap: 8,
+  },
+  insightText: { fontSize: 14, color: 'var(--text2)', lineHeight: 1.6, margin: 0 },
+  insightAction: {
+    background: 'none', border: 'none', color: 'var(--accent)',
+    fontSize: 13, fontWeight: 500, padding: 0, textAlign: 'left',
+    textDecoration: 'underline', textUnderlineOffset: 3,
+  },
+
+  // Weekly focus
+  focusRow: { display: 'flex', gap: 8 },
+  focusInput: {
+    flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)',
+    color: 'var(--text)', padding: '12px 16px', borderRadius: 8, fontSize: 15,
+  },
+  saveBtn: {
+    background: 'none', border: '1px solid var(--accent)', color: 'var(--accent)',
+    padding: '8px 16px', borderRadius: 6, fontSize: 13, flexShrink: 0, alignSelf: 'flex-start',
   },
 
   // Goal tracker
   emptyGoals: {
     background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8,
-    padding: '20px 24px',
+    padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 8,
   },
   emptyText: { fontSize: 14, color: 'var(--text3)', margin: 0 },
+  emptyAction: {
+    background: 'none', border: 'none', color: 'var(--accent)',
+    fontSize: 13, fontWeight: 500, padding: 0, textAlign: 'left',
+    textDecoration: 'underline', textUnderlineOffset: 3,
+  },
   goalList: { display: 'flex', flexDirection: 'column', gap: 8 },
   goalRow: {
     position: 'relative', overflow: 'hidden',
@@ -287,15 +500,14 @@ const s = {
     transition: 'width 0.3s ease, background 0.3s ease',
   },
 
-  // Weekly focus
-  focusRow: { display: 'flex', gap: 8 },
-  focusInput: {
-    flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)',
-    color: 'var(--text)', padding: '12px 16px', borderRadius: 8, fontSize: 15,
-  },
-  saveBtn: {
-    background: 'none', border: '1px solid var(--accent)', color: 'var(--accent)',
-    padding: '8px 16px', borderRadius: 6, fontSize: 13, flexShrink: 0,
+  // Reflection
+  reflectionGrid: { display: 'flex', flexDirection: 'column', gap: 12 },
+  reflectionField: { display: 'flex', flexDirection: 'column', gap: 4 },
+  reflectionLabel: { fontSize: 12, color: 'var(--text3)', fontWeight: 500 },
+  reflectionInput: {
+    background: 'var(--surface2)', border: '1px solid var(--border)',
+    color: 'var(--text)', padding: '12px 14px', borderRadius: 8,
+    fontSize: 14, lineHeight: 1.6, resize: 'vertical',
   },
 
   // Check-in options

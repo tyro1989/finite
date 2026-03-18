@@ -21,6 +21,7 @@ const defaultState = {
   people: [],
   weeklyIntentions: {},
   weeklyGoalHours: {},
+  weeklyReflections: {},
 }
 
 function loadLocalState() {
@@ -32,16 +33,16 @@ function loadLocalState() {
 }
 
 const TABS = [
-  { id: 'grid',    label: 'Your Life',     icon: '◉' },
-  { id: 'reality', label: 'Reality Check',  icon: '◷' },
-  { id: 'goals',   label: 'Goals',          icon: '◎' },
-  { id: 'people',  label: 'People',         icon: '♡' },
-  { id: 'checkin', label: 'This Week',      icon: '↻' },
+  { id: 'checkin', label: 'This Week' },
+  { id: 'grid',    label: 'Your Life' },
+  { id: 'goals',   label: 'Goals' },
+  { id: 'people',  label: 'People' },
+  { id: 'reality', label: 'Reality Check' },
 ]
 
 export default function App() {
   const [state, setState] = useState(defaultState)
-  const [activeTab, setActiveTab] = useState('grid')
+  const [activeTab, setActiveTab] = useState('checkin')
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState(false)
@@ -194,10 +195,14 @@ export default function App() {
         {activeTab === 'checkin' && (
           <CheckIn
             birthday={state.birthday}
+            lifeExpectancy={state.lifeExpectancy}
+            name={state.name}
             goals={state.goals}
+            people={state.people}
             checkins={state.checkins}
             weeklyIntentions={state.weeklyIntentions}
             weeklyGoalHours={state.weeklyGoalHours || {}}
+            weeklyReflections={state.weeklyReflections || {}}
             onCheckin={(wi, val) => update({ checkins: { ...state.checkins, [wi]: val } })}
             onIntention={(wi, text) => update({ weeklyIntentions: { ...state.weeklyIntentions, [wi]: text } })}
             onGoalHours={(wi, goalId, hours) => {
@@ -206,6 +211,8 @@ export default function App() {
               else delete weekData[goalId]
               update({ weeklyGoalHours: { ...state.weeklyGoalHours, [wi]: weekData } })
             }}
+            onReflection={(wi, reflection) => update({ weeklyReflections: { ...state.weeklyReflections, [wi]: reflection } })}
+            onNavigate={setActiveTab}
           />
         )}
       </main>

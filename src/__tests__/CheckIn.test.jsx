@@ -7,20 +7,25 @@ import CheckIn from '../components/CheckIn'
 
 const BASE_PROPS = {
   birthday: '1990-03-15',
+  lifeExpectancy: 75,
+  name: '',
   goals: [],
+  people: [],
   checkins: {},
   weeklyIntentions: {},
   weeklyGoalHours: {},
+  weeklyReflections: {},
   onCheckin: vi.fn(),
   onIntention: vi.fn(),
   onGoalHours: vi.fn(),
+  onReflection: vi.fn(),
+  onNavigate: vi.fn(),
 }
 
 describe('CheckIn — rendering', () => {
-  it('shows "This Week" h1 heading', () => {
+  it('shows h1 heading with week context', () => {
     render(<CheckIn {...BASE_PROPS} />)
-    // Use level:1 to target only the h1, not the h2s that also contain "this week"
-    expect(screen.getByRole('heading', { level: 1, name: /^This Week$/ })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
   })
 
   it('shows the current week number', () => {
@@ -72,7 +77,7 @@ describe('CheckIn — intention', () => {
     fireEvent.change(screen.getByPlaceholderText(/one sentence/i), {
       target: { value: 'Write 1000 words' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /save/i }))
+    fireEvent.click(screen.getAllByRole('button', { name: /save/i })[0])
 
     expect(onIntention).toHaveBeenCalledOnce()
     const [weekIndex, text] = onIntention.mock.calls[0]
@@ -151,7 +156,7 @@ describe('CheckIn — streak and stats', () => {
   it('shows goal tracker when goals are provided', () => {
     const goals = [{ id: 1, title: 'Write a novel', targetAge: 50, hoursPerWeek: 5 }]
     render(<CheckIn {...BASE_PROPS} goals={goals} />)
-    expect(screen.getByText(/write a novel/i)).toBeInTheDocument()
+    expect(screen.getByText(/hours toward your goals/i)).toBeInTheDocument()
     expect(screen.getByText(/5h\/week target/i)).toBeInTheDocument()
   })
 

@@ -61,8 +61,14 @@ describe('App — navigation', () => {
     expect(within(nav).getByRole('button', { name: /This Week/i })).toBeInTheDocument()
   })
 
-  it('defaults to the Grid (Your Life) tab', async () => {
+  it('defaults to the This Week (checkin) tab', async () => {
     await renderAndWait()
+    expect(screen.getByText(/Weekly focus/i)).toBeInTheDocument()
+  })
+
+  it('switches to Your Life tab', async () => {
+    const nav = await renderAndWait()
+    fireEvent.click(within(nav).getByRole('button', { name: /Your Life/i }))
     expect(screen.getByText(/seconds alive/i)).toBeInTheDocument()
   })
 
@@ -82,12 +88,6 @@ describe('App — navigation', () => {
     const nav = await renderAndWait()
     fireEvent.click(within(nav).getByRole('button', { name: /People/i }))
     expect(screen.getByText('The People Who Matter')).toBeInTheDocument()
-  })
-
-  it('switches to This Week tab', async () => {
-    const nav = await renderAndWait()
-    fireEvent.click(within(nav).getByRole('button', { name: /This Week/i }))
-    expect(screen.getByText(/Weekly focus/i)).toBeInTheDocument()
   })
 })
 

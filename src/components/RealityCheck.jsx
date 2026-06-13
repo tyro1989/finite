@@ -1,4 +1,4 @@
-import { getRealityBreakdown, getRemainingVisits, formatNumber } from '../utils'
+import { getRealityBreakdown, getRemainingVisits, formatNumber, getLifeSeasons, getBirthdaysWithPerson } from '../utils'
 
 const BREAKDOWN = [
   { key: 'sleepWeeks',       label: 'Asleep',        desc: '~8 hours every day', color: '#4a7fa5' },
@@ -9,6 +9,7 @@ const BREAKDOWN = [
 
 export default function RealityCheck({ birthday, lifeExpectancy, name, people = [] }) {
   const b = getRealityBreakdown(birthday, lifeExpectancy)
+  const seasons = getLifeSeasons(birthday, lifeExpectancy)
 
   const summers = Math.round(b.freeWeeks / 13)
   const freeWeekends = Math.round(b.freeWeeks * 2)
@@ -77,6 +78,49 @@ export default function RealityCheck({ birthday, lifeExpectancy, name, people = 
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Life Seasons */}
+      <section style={s.section}>
+        <h2 style={s.sectionTitle}>Your life, counted differently</h2>
+        <p style={s.sectionSub}>
+          Weeks are abstract. These numbers are visceral — each one is a moment you'll remember.
+        </p>
+        <div style={s.seasonsGrid}>
+          {[
+            { val: seasons.summers, label: 'summers left', icon: '☀' },
+            { val: seasons.sundayDinners, label: 'Sunday dinners', icon: '🍽' },
+            { val: seasons.christmases, label: 'holiday seasons', icon: '✦' },
+            { val: seasons.birthdays, label: 'birthdays to celebrate', icon: '○' },
+            { val: seasons.fullMoons, label: 'full moons to witness', icon: '◐' },
+            { val: seasons.springDays, label: 'spring days to feel', icon: '❋' },
+          ].map(item => (
+            <div key={item.label} style={s.seasonCard}>
+              <span style={s.seasonIcon}>{item.icon}</span>
+              <span style={s.seasonNum}>{formatNumber(item.val)}</span>
+              <span style={s.seasonLabel}>{item.label}</span>
+            </div>
+          ))}
+        </div>
+        {people.length > 0 && (
+          <div style={s.seasonsPeople}>
+            <h3 style={s.seasonsSubhead}>With the people you love</h3>
+            <div style={s.seasonsGrid}>
+              {people.slice(0, 4).map(p => {
+                const birthdays = getBirthdaysWithPerson(p.age, p.lifeExpectancy || 82)
+                const visits = getRemainingVisits(p.age, p.visitsPerYear, p.lifeExpectancy || 82)
+                return (
+                  <div key={p.id} style={s.seasonCard}>
+                    <span style={s.seasonPersonName}>{p.name}</span>
+                    <span style={s.seasonNum}>{birthdays}</span>
+                    <span style={s.seasonLabel}>birthdays together</span>
+                    <span style={s.seasonSub}>{formatNumber(visits)} more times you'll see them</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* What you could do */}
@@ -176,6 +220,19 @@ const s = {
   barDesc: { fontSize: 12, color: 'var(--text3)' },
   track: { height: 5, background: '#1a1a18', borderRadius: 3, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 3, transition: 'width 1.2s ease' },
+  seasonsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 14 },
+  seasonCard: {
+    background: 'var(--surface)', border: '1px solid var(--border)',
+    borderRadius: 10, padding: '18px 16px',
+    display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'center', textAlign: 'center',
+  },
+  seasonIcon: { fontSize: 18, opacity: 0.7, marginBottom: 4 },
+  seasonNum: { fontFamily: 'var(--font-serif)', fontSize: 32, color: 'var(--accent)', lineHeight: 1 },
+  seasonLabel: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.3 },
+  seasonSub: { fontSize: 10, color: 'var(--text3)', marginTop: 4 },
+  seasonPersonName: { fontSize: 13, color: 'var(--text)', fontWeight: 500, marginBottom: 2 },
+  seasonsPeople: { marginTop: 16, display: 'flex', flexDirection: 'column', gap: 14 },
+  seasonsSubhead: { fontFamily: 'var(--font-serif)', fontSize: 17, color: 'var(--text2)', fontWeight: 400 },
   cards: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 16 },
   card: {
     background: 'var(--surface)', border: '1px solid var(--border)',

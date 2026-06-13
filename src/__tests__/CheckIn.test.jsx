@@ -23,34 +23,15 @@ const BASE_PROPS = {
 }
 
 describe('CheckIn — rendering', () => {
-  it('shows h1 heading with week context', () => {
-    render(<CheckIn {...BASE_PROPS} />)
-    expect(screen.getByRole('heading', { level: 1 })).toBeInTheDocument()
-  })
-
-  it('shows the current week number', () => {
-    render(<CheckIn {...BASE_PROPS} />)
-    expect(screen.getByText(/Week \d+/)).toBeInTheDocument()
-  })
-
-  it('shows the formatted date', () => {
-    render(<CheckIn {...BASE_PROPS} />)
-    expect(screen.getByText(/Mar/)).toBeInTheDocument()
-  })
-
-  it('shows the "Weekly focus" prompt', () => {
-    render(<CheckIn {...BASE_PROPS} />)
-    expect(screen.getByText(/weekly focus/i)).toBeInTheDocument()
-  })
-
-  it('shows intention input', () => {
-    render(<CheckIn {...BASE_PROPS} />)
-    expect(screen.getByPlaceholderText(/one sentence/i)).toBeInTheDocument()
-  })
-
-  it('shows "Did this week move you forward?" prompt', () => {
+  it('shows "Did this week move you forward?" as primary question', () => {
     render(<CheckIn {...BASE_PROPS} />)
     expect(screen.getByText(/did this week move you forward/i)).toBeInTheDocument()
+  })
+
+  it('shows the current week number with dates', () => {
+    render(<CheckIn {...BASE_PROPS} />)
+    expect(screen.getByText(/Week \d+/)).toBeInTheDocument()
+    expect(screen.getByText(/Week \d+ — .+ to .+/)).toBeInTheDocument()
   })
 
   it('shows all three check-in options', () => {
@@ -60,12 +41,14 @@ describe('CheckIn — rendering', () => {
     expect(screen.getByText('No')).toBeInTheDocument()
   })
 
-  it('shows sidebar navigation cards', () => {
+  it('shows the weekly focus prompt', () => {
     render(<CheckIn {...BASE_PROPS} />)
-    expect(screen.getByText('Your Life')).toBeInTheDocument()
-    expect(screen.getByText('Goals')).toBeInTheDocument()
-    expect(screen.getByText('People')).toBeInTheDocument()
-    expect(screen.getByText('Reality Check')).toBeInTheDocument()
+    expect(screen.getByText(/what matters most this week/i)).toBeInTheDocument()
+  })
+
+  it('shows intention input', () => {
+    render(<CheckIn {...BASE_PROPS} />)
+    expect(screen.getByPlaceholderText(/one sentence/i)).toBeInTheDocument()
   })
 })
 
@@ -127,40 +110,37 @@ describe('CheckIn — check-in buttons', () => {
   })
 })
 
-describe('CheckIn — streak and stats', () => {
-  it('shows streak count', () => {
-    render(<CheckIn {...BASE_PROPS} />)
-    expect(screen.getByText(/week streak/i)).toBeInTheDocument()
-  })
-
-  it('shows great weeks count', () => {
-    render(<CheckIn {...BASE_PROPS} />)
-    expect(screen.getByText(/great weeks/i)).toBeInTheDocument()
-  })
-
-  it('calculates streak from consecutive yes/somewhat checkins', () => {
-    const checkins = { 1875: 'yes', 1876: 'yes', 1877: 'yes' }
-    render(<CheckIn {...BASE_PROPS} checkins={checkins} />)
-    expect(screen.getByTestId('streak-value')).toHaveTextContent('3')
-  })
-
-  it('streak resets at a "no" gap', () => {
-    const checkins = { 1875: 'no', 1876: 'yes', 1877: 'yes' }
-    render(<CheckIn {...BASE_PROPS} checkins={checkins} />)
-    expect(screen.getByTestId('streak-value')).toHaveTextContent('2')
-  })
-
-  it('shows goal tracker when goals are provided', () => {
+describe('CheckIn — collapsible sections', () => {
+  it('shows goal section as expandable when goals exist', () => {
     const goals = [{ id: 1, title: 'Write a novel', targetAge: 50, hoursPerWeek: 5 }]
     render(<CheckIn {...BASE_PROPS} goals={goals} />)
-    expect(screen.getByText(/hours toward your goals/i)).toBeInTheDocument()
-    expect(screen.getByText(/5h\/week target/i)).toBeInTheDocument()
+    expect(screen.getByText(/log goal hours/i)).toBeInTheDocument()
   })
 
-  it('navigates to other tabs via sidebar cards', () => {
-    const onNavigate = vi.fn()
-    render(<CheckIn {...BASE_PROPS} onNavigate={onNavigate} />)
-    fireEvent.click(screen.getByText('Goals').closest('button'))
-    expect(onNavigate).toHaveBeenCalledWith('goals')
+  it('shows goal details when expanded', () => {
+    const goals = [{ id: 1, title: 'Write a novel', targetAge: 50, hoursPerWeek: 5 }]
+    render(<CheckIn {...BASE_PROPS} goals={goals} />)
+    fireEvent.click(screen.getByText(/log goal hours/i).closest('button'))
+    expect(screen.getByText('Write a novel')).toBeInTheDocument()
+    expect(screen.getByText(/5h\/wk target/i)).toBeInTheDocument()
+  })
+
+  it('shows last week section with dates', () => {
+    render(<CheckIn {...BASE_PROPS} />)
+    expect(screen.getByText(/last week/i)).toBeInTheDocument()
+  })
+
+  it('shows reflection section as expandable', () => {
+    render(<CheckIn {...BASE_PROPS} />)
+    expect(screen.getByText(/reflect on this week/i)).toBeInTheDocument()
+  })
+})
+
+describe('CheckIn — weekly perspective', () => {
+  it('shows a perspective banner with rotating insight', () => {
+    render(<CheckIn {...BASE_PROPS} />)
+    const banner = document.querySelector('[style*="font-style: italic"]')
+    expect(banner).not.toBeNull()
+    expect(banner.textContent.length).toBeGreaterThan(20)
   })
 })

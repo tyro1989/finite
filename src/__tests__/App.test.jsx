@@ -63,7 +63,7 @@ describe('App — navigation', () => {
 
   it('defaults to the This Week (checkin) tab', async () => {
     await renderAndWait()
-    expect(screen.getByText(/Weekly focus/i)).toBeInTheDocument()
+    expect(screen.getByText(/what matters most this week/i)).toBeInTheDocument()
   })
 
   it('switches to Your Life tab', async () => {

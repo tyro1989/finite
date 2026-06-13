@@ -23,9 +23,14 @@ describe('People — empty state', () => {
     expect(screen.getByText('The People Who Matter')).toBeInTheDocument()
   })
 
-  it('shows empty-state message', () => {
+  it('shows motivating empty-state message', () => {
     render(<People {...BASE_PROPS} />)
-    expect(screen.getByText(/no one added yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/who would you regret not seeing more/i)).toBeInTheDocument()
+  })
+
+  it('shows suggestion prompts in empty state', () => {
+    render(<People {...BASE_PROPS} />)
+    expect(screen.getByText(/a parent far away/i)).toBeInTheDocument()
   })
 
   it('shows "Add someone" button', () => {

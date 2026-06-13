@@ -101,3 +101,60 @@ export function getRemainingVisits(personAge, visitsPerYear, personLE = 82) {
   const yearsLeft = Math.max(0, personLE - personAge)
   return Math.round(yearsLeft * visitsPerYear)
 }
+
+export function getLifeSeasons(birthday, lifeExpectancy) {
+  const currentAge = getCurrentAge(birthday)
+  const yearsLeft = Math.max(0, lifeExpectancy - currentAge)
+  return {
+    summers: Math.round(yearsLeft),
+    sundayDinners: Math.round(yearsLeft * 52),
+    christmases: Math.round(yearsLeft),
+    birthdays: Math.round(yearsLeft),
+    newYears: Math.round(yearsLeft),
+    fullMoons: Math.round(yearsLeft * 12),
+    springDays: Math.round(yearsLeft * 90),
+  }
+}
+
+export function getBirthdaysWithPerson(personAge, personLE = 82) {
+  return Math.max(0, Math.round(personLE - personAge))
+}
+
+const PERSPECTIVES = [
+  (b, le) => {
+    const age = getCurrentAge(b)
+    const mondays = Math.round((le - age) * 52)
+    return `This is one of your ${mondays.toLocaleString()} remaining Mondays. Start it like it matters.`
+  },
+  (b, le) => {
+    const seasons = getLifeSeasons(b, le)
+    return `You have ${seasons.summers} summers left. What will this one mean?`
+  },
+  (b, le) => {
+    const seasons = getLifeSeasons(b, le)
+    return `${seasons.sundayDinners.toLocaleString()} Sunday dinners remain. Who will you share them with?`
+  },
+  (b, le) => {
+    const seasons = getLifeSeasons(b, le)
+    return `Only ${seasons.christmases} more holiday seasons. Make this one count.`
+  },
+  (b, le) => {
+    const age = getCurrentAge(b)
+    const sunsets = Math.round((le - age) * 365)
+    return `Roughly ${sunsets.toLocaleString()} sunsets left. How many will you actually watch?`
+  },
+  (b, le) => {
+    const age = getCurrentAge(b)
+    const mornings = Math.round((le - age) * 365)
+    return `${mornings.toLocaleString()} mornings remain. Each one is a fresh start you'll never get back.`
+  },
+  (b, le) => {
+    const seasons = getLifeSeasons(b, le)
+    return `${seasons.fullMoons} full moons left in your lifetime. The next one is soon.`
+  },
+]
+
+export function getWeeklyPerspective(birthday, lifeExpectancy, weekIndex) {
+  const idx = weekIndex % PERSPECTIVES.length
+  return PERSPECTIVES[idx](birthday, lifeExpectancy)
+}

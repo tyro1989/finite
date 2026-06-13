@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { getFreeWeeksToGoal, getCurrentAge, getRealityBreakdown, formatNumber } from '../utils'
+import { getFreeWeeksToGoal, getCurrentAge, getWeeksLived, getRealityBreakdown, formatNumber } from '../utils'
 
 const emptyForm = { title: '', description: '', targetAge: '', hoursPerWeek: 5 }
 
@@ -34,8 +34,17 @@ export default function Goals({ birthday, lifeExpectancy, goals, onUpdate }) {
 
       {goals.length === 0 && !adding && (
         <div style={s.empty}>
-          <p style={s.emptyText}>No goals yet.</p>
-          <p style={s.emptyNote}>Every week without a goal is a week that drifts.</p>
+          <p style={s.emptyText}>What will you do with your {formatNumber(totalFreeWeeks)} free weeks?</p>
+          <p style={s.emptyNote}>
+            People who define 3+ life goals report twice as many "great weeks."
+            Your free time is finite — give it direction.
+          </p>
+          <div style={s.emptyPrompts}>
+            <span style={s.emptyPrompt}>Learn an instrument?</span>
+            <span style={s.emptyPrompt}>Write a book?</span>
+            <span style={s.emptyPrompt}>Build something?</span>
+            <span style={s.emptyPrompt}>Get fit?</span>
+          </div>
         </div>
       )}
 
@@ -65,17 +74,28 @@ export default function Goals({ birthday, lifeExpectancy, goals, onUpdate }) {
               <div style={s.insight}>
                 {isPast ? (
                   <span style={{ color: 'var(--text3)' }}>This deadline has passed.</span>
-                ) : (
-                  <>
-                    By age <strong style={{ color: 'var(--accent)' }}>{goal.targetAge}</strong>, committing{' '}
-                    <strong>{goal.hoursPerWeek}h/week</strong>, you'll have{' '}
-                    <strong style={{ color: 'var(--accent)' }}>{formatNumber(totalHours)} hours</strong> to pursue this goal.{' '}
-                    {weeksNeeded && freeWeeks < weeksNeeded
-                      ? <span style={{ color: 'var(--accent2)' }}>Mastery (10k hrs) needs more hours/week.</span>
-                      : <span style={{ color: 'var(--success)' }}>Mastery is within reach.</span>
-                    }
-                  </>
-                )}
+                ) : (() => {
+                  const weeksLived = getWeeksLived(birthday)
+                  const masteryWeek = goal.hoursPerWeek > 0 ? Math.round(weeksLived + (10000 / goal.hoursPerWeek)) : null
+                  const masteryAge = masteryWeek ? Math.round(currentAge + (10000 / goal.hoursPerWeek / 52)) : null
+                  const pctOfFreeTime = totalFreeWeeks > 0 ? Math.round((freeWeeks / totalFreeWeeks) * 100) : 0
+                  return (
+                    <>
+                      At <strong>{goal.hoursPerWeek}h/week</strong>, you'll reach{' '}
+                      <strong style={{ color: 'var(--accent)' }}>{formatNumber(totalHours)} hours</strong> by age {goal.targetAge}.
+                      {' '}This goal claims <strong>{pctOfFreeTime}%</strong> of your total free time.
+                      {masteryAge && masteryAge <= lifeExpectancy ? (
+                        <span style={{ color: 'var(--success)' }}>
+                          {' '}Mastery arrives around age {masteryAge} — you'll have time to enjoy it.
+                        </span>
+                      ) : masteryAge ? (
+                        <span style={{ color: 'var(--accent2)' }}>
+                          {' '}At this pace, mastery would take until age {masteryAge}. Consider more hours/week.
+                        </span>
+                      ) : null}
+                    </>
+                  )
+                })()}
               </div>
             </div>
           )
@@ -190,9 +210,14 @@ const s = {
   header: { display: 'flex', flexDirection: 'column', gap: 8 },
   headline: { fontFamily: 'var(--font-serif)', fontSize: 'clamp(28px, 5vw, 44px)', color: 'var(--text)', fontWeight: 400 },
   sub: { fontSize: 16, color: 'var(--text2)', lineHeight: 1.7 },
-  empty: { textAlign: 'center', padding: '40px 0' },
-  emptyText: { fontFamily: 'var(--font-serif)', fontSize: 22, color: 'var(--text3)', fontStyle: 'italic' },
-  emptyNote: { fontSize: 13, color: 'var(--text3)', marginTop: 8 },
+  empty: { textAlign: 'center', padding: '40px 20px' },
+  emptyText: { fontFamily: 'var(--font-serif)', fontSize: 22, color: 'var(--text)', fontWeight: 400 },
+  emptyNote: { fontSize: 14, color: 'var(--text2)', marginTop: 10, lineHeight: 1.6 },
+  emptyPrompts: { display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 16 },
+  emptyPrompt: {
+    fontSize: 12, color: 'var(--accent)', background: '#1a1810',
+    border: '1px solid #2a2418', borderRadius: 20, padding: '6px 14px',
+  },
   goalList: { display: 'flex', flexDirection: 'column', gap: 16 },
   card: {
     background: 'var(--surface)', border: '1px solid var(--border)',

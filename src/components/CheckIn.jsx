@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { getWeeksLived, getDateAtWeek, getRemainingVisits, getRealityBreakdown, formatNumber } from '../utils'
+import { getWeeksLived, getDateAtWeek, getRemainingVisits, getRealityBreakdown, formatNumber, getWeeklyPerspective, getBirthdaysWithPerson } from '../utils'
 
 const CHECKIN_OPTIONS = [
-  { value: 'yes',      label: 'Yes',      sub: 'Real progress', bg: '#2a4a2a', border: '#3a6a3a' },
-  { value: 'somewhat', label: 'Somewhat', sub: 'Some drift',    bg: '#3a3010', border: '#5a4818' },
-  { value: 'no',       label: 'No',       sub: 'Week slipped',  bg: '#2a1a1a', border: '#3e2020' },
+  { value: 'yes',      label: 'Yes',      sub: 'Real progress', bg: '#e8f5e9', border: '#66bb6a', activeBg: '#c8e6c9' },
+  { value: 'somewhat', label: 'Somewhat', sub: 'Some drift',    bg: '#fff8e1', border: '#ffa726', activeBg: '#ffecb3' },
+  { value: 'no',       label: 'No',       sub: 'Week slipped',  bg: '#fbe9e7', border: '#ef5350', activeBg: '#ffcdd2' },
 ]
 
 function getWeekEndDate(startDate) {
@@ -23,7 +23,9 @@ export default function CheckIn({
   onReflection, onNavigate,
 }) {
   const currentWeek = getWeeksLived(birthday)
+  const lastWeek = currentWeek - 1
   const existingReflection = weeklyReflections[currentWeek] || {}
+  const lastWeekReflection = weeklyReflections[lastWeek] || {}
   const [intention, setIntention] = useState(weeklyIntentions[currentWeek] || '')
   const [reflection, setReflection] = useState({
     wins: existingReflection.wins || '',
@@ -32,10 +34,16 @@ export default function CheckIn({
   })
   const [saved, setSaved] = useState(false)
   const [reflectionSaved, setReflectionSaved] = useState(false)
+  const [showGoals, setShowGoals] = useState(false)
+  const [showReflection, setShowReflection] = useState(false)
+  const [showLastWeek, setShowLastWeek] = useState(false)
 
   const currentCheckin = checkins[currentWeek]
+  const lastWeekCheckin = checkins[lastWeek]
   const weekStart = getDateAtWeek(birthday, currentWeek)
   const weekEnd = getWeekEndDate(weekStart)
+  const lastWeekStart = getDateAtWeek(birthday, lastWeek)
+  const lastWeekEnd = getWeekEndDate(lastWeekStart)
   const thisWeekHours = weeklyGoalHours[currentWeek] || {}
   const totalHoursLogged = Object.values(thisWeekHours).reduce((sum, h) => sum + h, 0)
 
@@ -51,65 +59,112 @@ export default function CheckIn({
     setTimeout(() => setReflectionSaved(false), 2000)
   }
 
-  // Stats
-  let streak = 0
-  for (let i = currentWeek - 1; i >= 0; i--) {
-    if (checkins[i] === 'yes' || checkins[i] === 'somewhat') streak++
-    else break
-  }
-  const counts = Object.values(checkins).reduce((acc, v) => { acc[v] = (acc[v] || 0) + 1; return acc }, {})
-  const allTimeHours = Object.values(weeklyGoalHours).reduce((total, wd) => total + Object.values(wd).reduce((s, h) => s + h, 0), 0)
-
-  // Sidebar data
-  const { freeWeeks, remaining } = getRealityBreakdown(birthday, lifeExpectancy)
-  const urgentPeople = people.filter(p => getRemainingVisits(p.age, p.visitsPerYear, p.lifeExpectancy || 82) <= 150)
+  const perspective = getWeeklyPerspective(birthday, lifeExpectancy, currentWeek)
 
   return (
     <div style={s.page}>
-      {/* ══════ MAIN JOURNAL ══════ */}
-      <div style={s.main}>
-        {/* Header */}
-        <div style={s.header}>
-          <div style={s.weekRange}>
-            <span style={s.weekBadge}>Week {currentWeek + 1}</span>
-            <span style={s.dateRange}>{formatShortDate(weekStart)} – {formatShortDate(weekEnd)}, {weekStart.getFullYear()}</span>
-          </div>
-          <h1 style={s.headline}>{name ? `${name}'s Week` : 'This Week'}</h1>
-        </div>
+      {/* Perspective — gentle nudge */}
+      <p style={s.perspective}>{perspective}</p>
 
-        {/* Weekly focus */}
-        <section style={s.section}>
-          <h2 style={s.sectionTitle}>Weekly focus</h2>
-          <div style={s.focusRow}>
-            <input
-              type="text"
-              style={s.focusInput}
-              value={intention}
-              onChange={e => setIntention(e.target.value)}
-              placeholder="One sentence — what matters most this week?"
-              onKeyDown={e => e.key === 'Enter' && handleSaveIntention()}
-            />
-            <button style={s.saveBtn} onClick={handleSaveIntention}>
-              {saved ? '✓' : 'Save'}
+      {/* ═══ PRIMARY: Did this week move you forward? ═══ */}
+      <section style={s.section}>
+        <h2 style={s.question}>Did this week move you forward?</h2>
+        <p style={s.weekLabel}>
+          Week {currentWeek + 1} — {formatShortDate(weekStart)} to {formatShortDate(weekEnd)}, {weekStart.getFullYear()}
+        </p>
+        <div style={s.options}>
+          {CHECKIN_OPTIONS.map(opt => (
+            <button key={opt.value} style={{
+              ...s.option,
+              background: currentCheckin === opt.value ? opt.activeBg : 'var(--surface)',
+              border: `2px solid ${currentCheckin === opt.value ? opt.border : 'var(--border)'}`,
+            }} onClick={() => onCheckin(currentWeek, opt.value)}>
+              <span style={s.optionLabel}>{opt.label}</span>
+              <span style={s.optionSub}>{opt.sub}</span>
             </button>
-          </div>
-        </section>
+          ))}
+        </div>
+      </section>
 
-        {/* Goal hours */}
-        {goals.length > 0 && (
-          <section style={s.section}>
-            <div style={s.sectionHeader}>
-              <h2 style={s.sectionTitle}>Hours toward your goals</h2>
-              {totalHoursLogged > 0 && <span style={s.totalBadge}>{totalHoursLogged}h</span>}
+      {/* ═══ Weekly focus (always visible, lightweight) ═══ */}
+      <section style={s.section}>
+        <h2 style={s.sectionTitle}>What matters most this week?</h2>
+        <div style={s.focusRow}>
+          <input
+            type="text"
+            style={s.focusInput}
+            value={intention}
+            onChange={e => setIntention(e.target.value)}
+            placeholder="One sentence..."
+            onKeyDown={e => e.key === 'Enter' && handleSaveIntention()}
+          />
+          <button style={s.saveBtn} onClick={handleSaveIntention}>
+            {saved ? 'Saved' : 'Save'}
+          </button>
+        </div>
+      </section>
+
+      {/* ═══ LAST WEEK (collapsible) ═══ */}
+      {lastWeek >= 0 && (
+        <section style={s.section}>
+          <button style={s.expandBtn} onClick={() => setShowLastWeek(!showLastWeek)}>
+            <span style={s.expandTitle}>
+              Last week — {formatShortDate(lastWeekStart)} to {formatShortDate(lastWeekEnd)}
+            </span>
+            <span style={s.expandArrow}>{showLastWeek ? '−' : '+'}</span>
+          </button>
+          {showLastWeek && (
+            <div style={s.expandContent}>
+              {lastWeekCheckin && (
+                <div style={s.lastWeekStatus}>
+                  <span style={s.miniLabel}>Verdict:</span>
+                  <span style={{
+                    ...s.lastWeekBadge,
+                    color: lastWeekCheckin === 'yes' ? 'var(--success)' : lastWeekCheckin === 'no' ? 'var(--danger)' : 'var(--accent)',
+                  }}>
+                    {lastWeekCheckin === 'yes' ? 'Moved forward' : lastWeekCheckin === 'somewhat' ? 'Some drift' : 'Week slipped'}
+                  </span>
+                </div>
+              )}
+              {weeklyIntentions[lastWeek] && (
+                <div style={s.lastWeekItem}>
+                  <span style={s.miniLabel}>Focus was:</span>
+                  <span style={s.lastWeekText}>{weeklyIntentions[lastWeek]}</span>
+                </div>
+              )}
+              {(lastWeekReflection.wins || lastWeekReflection.struggles || lastWeekReflection.change) && (
+                <div style={s.lastWeekReflection}>
+                  {lastWeekReflection.wins && <p style={s.lastWeekDetail}><strong>Went well:</strong> {lastWeekReflection.wins}</p>}
+                  {lastWeekReflection.struggles && <p style={s.lastWeekDetail}><strong>Struggled:</strong> {lastWeekReflection.struggles}</p>}
+                  {lastWeekReflection.change && <p style={s.lastWeekDetail}><strong>Committed to:</strong> {lastWeekReflection.change}</p>}
+                </div>
+              )}
+              {!lastWeekCheckin && !weeklyIntentions[lastWeek] && !lastWeekReflection.wins && (
+                <p style={s.emptyHint}>No data recorded last week.</p>
+              )}
             </div>
-            <div style={s.goalList}>
+          )}
+        </section>
+      )}
+
+      {/* ═══ Goal hours (optional, collapsible) ═══ */}
+      {goals.length > 0 && (
+        <section style={s.section}>
+          <button style={s.expandBtn} onClick={() => setShowGoals(!showGoals)}>
+            <span style={s.expandTitle}>
+              Log goal hours {totalHoursLogged > 0 && <span style={s.badge}>{totalHoursLogged}h</span>}
+            </span>
+            <span style={s.expandArrow}>{showGoals ? '−' : '+'}</span>
+          </button>
+          {showGoals && (
+            <div style={s.expandContent}>
               {goals.map(goal => {
                 const hours = thisWeekHours[goal.id] || ''
                 return (
                   <div key={goal.id} style={s.goalRow}>
                     <div style={s.goalInfo}>
                       <span style={s.goalTitle}>{goal.title}</span>
-                      <span style={s.goalTarget}>{goal.hoursPerWeek}h/week target</span>
+                      <span style={s.goalTarget}>{goal.hoursPerWeek}h/wk target</span>
                     </div>
                     <div style={s.hoursInput}>
                       <input
@@ -123,268 +178,141 @@ export default function CheckIn({
                       />
                       <span style={s.hoursLabel}>hrs</span>
                     </div>
-                    {hours > 0 && (
-                      <div style={{
-                        ...s.progressBar,
-                        width: `${Math.min(100, (hours / goal.hoursPerWeek) * 100)}%`,
-                        background: hours >= goal.hoursPerWeek ? '#3a6a3a' : 'var(--accent)',
-                      }} />
-                    )}
                   </div>
                 )
               })}
             </div>
-          </section>
-        )}
+          )}
+        </section>
+      )}
 
-        {/* Reflection */}
-        <section style={s.section}>
-          <h2 style={s.sectionTitle}>Weekly reflection</h2>
-          <div style={s.reflectionGrid}>
+      {/* ═══ Weekly reflection (optional, collapsible) ═══ */}
+      <section style={s.section}>
+        <button style={s.expandBtn} onClick={() => setShowReflection(!showReflection)}>
+          <span style={s.expandTitle}>Reflect on this week</span>
+          <span style={s.expandArrow}>{showReflection ? '−' : '+'}</span>
+        </button>
+        {showReflection && (
+          <div style={s.expandContent}>
             <div style={s.reflectionField}>
-              <label style={s.reflectionLabel}>What went well?</label>
-              <textarea style={s.reflectionInput} value={reflection.wins}
+              <label style={s.fieldLabel}>What went well?</label>
+              <textarea style={s.textarea} value={reflection.wins}
                 onChange={e => setReflection(r => ({ ...r, wins: e.target.value }))}
                 placeholder="Wins, progress, good decisions..." rows={2} />
             </div>
             <div style={s.reflectionField}>
-              <label style={s.reflectionLabel}>What didn't go as planned?</label>
-              <textarea style={s.reflectionInput} value={reflection.struggles}
+              <label style={s.fieldLabel}>What didn't go as planned?</label>
+              <textarea style={s.textarea} value={reflection.struggles}
                 onChange={e => setReflection(r => ({ ...r, struggles: e.target.value }))}
                 placeholder="Missed targets, distractions..." rows={2} />
             </div>
             <div style={s.reflectionField}>
-              <label style={s.reflectionLabel}>One thing I'll change next week</label>
-              <textarea style={s.reflectionInput} value={reflection.change}
+              <label style={s.fieldLabel}>One thing I'll change next week</label>
+              <textarea style={s.textarea} value={reflection.change}
                 onChange={e => setReflection(r => ({ ...r, change: e.target.value }))}
                 placeholder="A specific, actionable change..." rows={2} />
             </div>
+            <button style={s.saveBtn} onClick={handleSaveReflection}>
+              {reflectionSaved ? 'Saved' : 'Save reflection'}
+            </button>
           </div>
-          <button style={s.saveBtn} onClick={handleSaveReflection}>
-            {reflectionSaved ? '✓ Saved' : 'Save reflection'}
-          </button>
-        </section>
-
-        {/* Sentiment */}
-        <section style={s.section}>
-          <h2 style={s.sectionTitle}>Did this week move you forward?</h2>
-          <div style={s.options}>
-            {CHECKIN_OPTIONS.map(opt => (
-              <button key={opt.value} style={{
-                ...s.option,
-                background: currentCheckin === opt.value ? opt.bg : 'var(--surface)',
-                border: `1px solid ${currentCheckin === opt.value ? opt.border : 'var(--border)'}`,
-              }} onClick={() => onCheckin(currentWeek, opt.value)}>
-                <span style={s.optionLabel}>{opt.label}</span>
-                <span style={s.optionSub}>{opt.sub}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      </div>
-
-      {/* ══════ SIDEBAR / BOTTOM ══════ */}
-      <aside style={s.sidebar}>
-        {/* Stats */}
-        <div style={s.card}>
-          <div style={s.cardTitle}>This week</div>
-          <div style={s.miniStats}>
-            <div style={s.miniStat}>
-              <span data-testid="streak-value" style={s.miniStatVal}>{streak}</span>
-              <span style={s.miniStatLabel}>week streak</span>
-            </div>
-            <div style={s.miniStat}>
-              <span data-testid="hours-week-value" style={s.miniStatVal}>{totalHoursLogged}</span>
-              <span style={s.miniStatLabel}>hrs logged</span>
-            </div>
-            <div style={s.miniStat}>
-              <span data-testid="great-weeks-value" style={{ ...s.miniStatVal, color: '#6a9a5a' }}>{counts.yes || 0}</span>
-              <span style={s.miniStatLabel}>great weeks</span>
-            </div>
-            <div style={s.miniStat}>
-              <span data-testid="lost-weeks-value" style={{ ...s.miniStatVal, color: 'var(--text3)' }}>{counts.no || 0}</span>
-              <span style={s.miniStatLabel}>lost weeks</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Life snapshot */}
-        <button style={s.navCard} onClick={() => onNavigate && onNavigate('grid')}>
-          <div style={s.navCardTop}>
-            <span style={s.navCardLabel}>Your Life</span>
-            <span style={s.navCardArrow}>→</span>
-          </div>
-          <div style={s.navCardStats}>
-            <span style={s.navCardNum}>{formatNumber(remaining)}</span>
-            <span style={s.navCardSub}>weeks remaining</span>
-          </div>
-          <div style={s.navCardStats}>
-            <span style={{ ...s.navCardNum, color: 'var(--accent)' }}>{formatNumber(freeWeeks)}</span>
-            <span style={s.navCardSub}>truly free weeks</span>
-          </div>
-        </button>
-
-        {/* Goals snapshot */}
-        <button style={s.navCard} onClick={() => onNavigate && onNavigate('goals')}>
-          <div style={s.navCardTop}>
-            <span style={s.navCardLabel}>Goals</span>
-            <span style={s.navCardArrow}>→</span>
-          </div>
-          {goals.length === 0 ? (
-            <span style={s.navCardHint}>No goals yet — add one to start tracking</span>
-          ) : (
-            <>
-              <div style={s.navCardStats}>
-                <span style={s.navCardNum}>{goals.length}</span>
-                <span style={s.navCardSub}>{goals.length === 1 ? 'life goal' : 'life goals'}</span>
-              </div>
-              <div style={s.navCardStats}>
-                <span style={{ ...s.navCardNum, color: 'var(--accent)' }}>{Math.round(allTimeHours)}</span>
-                <span style={s.navCardSub}>total hrs invested</span>
-              </div>
-            </>
-          )}
-        </button>
-
-        {/* People snapshot */}
-        <button style={s.navCard} onClick={() => onNavigate && onNavigate('people')}>
-          <div style={s.navCardTop}>
-            <span style={s.navCardLabel}>People</span>
-            <span style={s.navCardArrow}>→</span>
-          </div>
-          {people.length === 0 ? (
-            <span style={s.navCardHint}>Add loved ones to see time remaining with them</span>
-          ) : (
-            <>
-              <div style={s.navCardStats}>
-                <span style={s.navCardNum}>{people.length}</span>
-                <span style={s.navCardSub}>{people.length === 1 ? 'person tracked' : 'people tracked'}</span>
-              </div>
-              {urgentPeople.length > 0 && (
-                <span style={s.navCardUrgent}>
-                  {urgentPeople.length === 1
-                    ? `${urgentPeople[0].name} — limited visits left`
-                    : `${urgentPeople.length} people with limited visits`}
-                </span>
-              )}
-            </>
-          )}
-        </button>
-
-        {/* Reality check link */}
-        <button style={s.navCard} onClick={() => onNavigate && onNavigate('reality')}>
-          <div style={s.navCardTop}>
-            <span style={s.navCardLabel}>Reality Check</span>
-            <span style={s.navCardArrow}>→</span>
-          </div>
-          <span style={s.navCardHint}>See how your time is really spent</span>
-        </button>
-      </aside>
+        )}
+      </section>
     </div>
   )
 }
 
 const s = {
   page: {
-    display: 'flex', gap: 40, alignItems: 'flex-start',
-    flexWrap: 'wrap',
+    display: 'flex', flexDirection: 'column', gap: 24,
   },
 
-  // Main journal column
-  main: { flex: '1 1 420px', display: 'flex', flexDirection: 'column', gap: 28, minWidth: 0 },
+  perspective: {
+    fontFamily: 'var(--font-serif)', fontSize: 16, color: 'var(--text2)',
+    lineHeight: 1.6, fontStyle: 'italic', margin: 0,
+    padding: '16px 0', borderBottom: '1px solid var(--border)',
+  },
 
-  // Header
-  header: { display: 'flex', flexDirection: 'column', gap: 6 },
-  weekRange: { display: 'flex', alignItems: 'center', gap: 12 },
-  weekBadge: { fontSize: 11, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 },
-  dateRange: { fontSize: 14, color: 'var(--text2)' },
-  headline: { fontFamily: 'var(--font-serif)', fontSize: 'clamp(26px, 5vw, 36px)', color: 'var(--text)', fontWeight: 400, margin: 0 },
+  section: { display: 'flex', flexDirection: 'column', gap: 12 },
 
-  // Sections
-  section: { display: 'flex', flexDirection: 'column', gap: 10 },
-  sectionHeader: { display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 },
-  sectionTitle: { fontFamily: 'var(--font-serif)', fontSize: 18, color: 'var(--text)', fontWeight: 400, margin: 0 },
-  totalBadge: { fontSize: 13, color: 'var(--accent)', fontWeight: 600 },
+  question: {
+    fontFamily: 'var(--font-serif)', fontSize: 24, color: 'var(--text)',
+    fontWeight: 400, margin: 0, lineHeight: 1.3,
+  },
+  weekLabel: { fontSize: 14, color: 'var(--text3)', margin: 0 },
 
-  // Focus
+  sectionTitle: {
+    fontSize: 17, color: 'var(--text)', fontWeight: 500, margin: 0,
+  },
+
+  options: { display: 'flex', gap: 10, flexWrap: 'wrap' },
+  option: {
+    flex: '1 1 100px', padding: '16px', borderRadius: 'var(--radius)', cursor: 'pointer',
+    display: 'flex', flexDirection: 'column', gap: 4, textAlign: 'center',
+    transition: 'all 0.15s', minWidth: 90,
+  },
+  optionLabel: { fontSize: 16, fontWeight: 600, color: 'var(--text)' },
+  optionSub: { fontSize: 13, color: 'var(--text2)' },
+
   focusRow: { display: 'flex', gap: 8 },
   focusInput: {
-    flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)',
-    color: 'var(--text)', padding: '10px 14px', borderRadius: 8, fontSize: 14,
+    flex: 1, background: 'var(--surface)', border: '1px solid var(--border)',
+    color: 'var(--text)', padding: '12px 16px', borderRadius: 8, fontSize: 16,
   },
   saveBtn: {
-    background: 'none', border: '1px solid var(--accent)', color: 'var(--accent)',
-    padding: '8px 14px', borderRadius: 6, fontSize: 13, flexShrink: 0, alignSelf: 'flex-start',
+    background: 'var(--accent)', border: 'none', color: '#fff',
+    padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 500,
+    flexShrink: 0, alignSelf: 'flex-start',
   },
 
+  expandBtn: {
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+    width: '100%', padding: '14px 16px', borderRadius: 'var(--radius)',
+    background: 'var(--surface)', border: '1px solid var(--border)',
+    textAlign: 'left',
+  },
+  expandTitle: { fontSize: 15, fontWeight: 500, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 },
+  expandArrow: { fontSize: 18, color: 'var(--text3)', fontWeight: 300, lineHeight: 1 },
+  expandContent: {
+    display: 'flex', flexDirection: 'column', gap: 12,
+    padding: '4px 0',
+  },
+  badge: {
+    fontSize: 12, background: 'var(--surface2)', color: 'var(--accent)',
+    padding: '2px 8px', borderRadius: 10, fontWeight: 600,
+  },
+
+  // Last week
+  lastWeekStatus: { display: 'flex', alignItems: 'center', gap: 8 },
+  lastWeekBadge: { fontSize: 14, fontWeight: 500 },
+  lastWeekItem: { display: 'flex', flexDirection: 'column', gap: 2 },
+  lastWeekText: { fontSize: 14, color: 'var(--text)' },
+  lastWeekReflection: { display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 0' },
+  lastWeekDetail: { fontSize: 14, color: 'var(--text2)', margin: 0, lineHeight: 1.5 },
+  miniLabel: { fontSize: 12, color: 'var(--text3)', fontWeight: 500 },
+  emptyHint: { fontSize: 14, color: 'var(--text3)', margin: 0 },
+
   // Goals
-  goalList: { display: 'flex', flexDirection: 'column', gap: 6 },
   goalRow: {
-    position: 'relative', overflow: 'hidden',
-    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8,
-    padding: '12px 14px',
+    background: 'var(--surface2)', borderRadius: 8, padding: '12px 14px',
     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
   },
   goalInfo: { display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 },
-  goalTitle: { fontSize: 14, color: 'var(--text)', fontWeight: 500 },
-  goalTarget: { fontSize: 11, color: 'var(--text3)' },
+  goalTitle: { fontSize: 15, color: 'var(--text)', fontWeight: 500 },
+  goalTarget: { fontSize: 12, color: 'var(--text3)' },
   hoursInput: { display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 },
   hoursField: {
-    width: 52, background: 'var(--surface2)', border: '1px solid var(--border)',
-    color: 'var(--text)', padding: '7px 8px', borderRadius: 6, fontSize: 14, textAlign: 'right',
+    width: 56, background: 'var(--surface)', border: '1px solid var(--border)',
+    color: 'var(--text)', padding: '8px', borderRadius: 6, fontSize: 15, textAlign: 'right',
   },
-  hoursLabel: { fontSize: 11, color: 'var(--text3)' },
-  progressBar: {
-    position: 'absolute', bottom: 0, left: 0, height: 2,
-    borderRadius: '0 2px 2px 0', transition: 'width 0.3s ease, background 0.3s ease',
-  },
+  hoursLabel: { fontSize: 12, color: 'var(--text3)' },
 
   // Reflection
-  reflectionGrid: { display: 'flex', flexDirection: 'column', gap: 10 },
-  reflectionField: { display: 'flex', flexDirection: 'column', gap: 3 },
-  reflectionLabel: { fontSize: 12, color: 'var(--text3)', fontWeight: 500 },
-  reflectionInput: {
-    background: 'var(--surface2)', border: '1px solid var(--border)',
-    color: 'var(--text)', padding: '10px 12px', borderRadius: 8,
-    fontSize: 14, lineHeight: 1.5, resize: 'vertical',
+  reflectionField: { display: 'flex', flexDirection: 'column', gap: 4 },
+  fieldLabel: { fontSize: 13, color: 'var(--text2)', fontWeight: 500 },
+  textarea: {
+    background: 'var(--surface)', border: '1px solid var(--border)',
+    color: 'var(--text)', padding: '12px 14px', borderRadius: 8,
+    fontSize: 15, lineHeight: 1.5, resize: 'vertical',
   },
-
-  // Sentiment
-  options: { display: 'flex', gap: 8, flexWrap: 'wrap' },
-  option: {
-    flex: '1 1 120px', padding: '12px 14px', borderRadius: 8, cursor: 'pointer',
-    display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'left', transition: 'all 0.2s',
-  },
-  optionLabel: { fontSize: 14, fontWeight: 600, color: 'var(--text)' },
-  optionSub: { fontSize: 11, color: 'var(--text2)' },
-
-  // ── Sidebar ──
-  sidebar: {
-    flex: '0 0 260px', display: 'flex', flexDirection: 'column', gap: 10,
-    position: 'sticky', top: 80,
-  },
-  card: {
-    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
-    padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10,
-  },
-  cardTitle: { fontSize: 11, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600 },
-  miniStats: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 },
-  miniStat: { display: 'flex', flexDirection: 'column', gap: 2 },
-  miniStatVal: { fontFamily: 'var(--font-serif)', fontSize: 22, color: 'var(--accent)', lineHeight: 1 },
-  miniStatLabel: { fontSize: 9, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' },
-
-  // Nav cards
-  navCard: {
-    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10,
-    padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 8,
-    textAlign: 'left', transition: 'border-color 0.2s', width: '100%',
-  },
-  navCardTop: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  navCardLabel: { fontSize: 14, color: 'var(--text)', fontWeight: 500 },
-  navCardArrow: { fontSize: 14, color: 'var(--text3)' },
-  navCardStats: { display: 'flex', alignItems: 'baseline', gap: 6 },
-  navCardNum: { fontFamily: 'var(--font-serif)', fontSize: 20, color: 'var(--text)', lineHeight: 1 },
-  navCardSub: { fontSize: 11, color: 'var(--text3)' },
-  navCardHint: { fontSize: 12, color: 'var(--text3)', lineHeight: 1.4 },
-  navCardUrgent: { fontSize: 12, color: '#e74c3c', lineHeight: 1.4 },
 }

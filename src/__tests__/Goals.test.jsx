@@ -23,9 +23,15 @@ describe('Goals — empty state', () => {
     expect(screen.getByRole('heading', { name: /Life Goals/i })).toBeInTheDocument()
   })
 
-  it('shows empty-state message when no goals', () => {
+  it('shows motivating empty-state message when no goals', () => {
     render(<Goals {...BASE_PROPS} />)
-    expect(screen.getByText(/no goals yet/i)).toBeInTheDocument()
+    expect(screen.getByText(/what will you do with your/i)).toBeInTheDocument()
+  })
+
+  it('shows suggestion prompts in empty state', () => {
+    render(<Goals {...BASE_PROPS} />)
+    expect(screen.getByText(/learn an instrument/i)).toBeInTheDocument()
+    expect(screen.getByText(/write a book/i)).toBeInTheDocument()
   })
 
   it('shows an "Add a life goal" button', () => {
@@ -111,10 +117,10 @@ describe('Goals — existing goals', () => {
     expect(screen.getByText(/free hours/i)).toBeInTheDocument()
   })
 
-  it('shows the insight line with target age', () => {
+  it('shows the insight line with target age and time percentage', () => {
     render(<Goals {...props} />)
     expect(screen.getByText(/by age/i)).toBeInTheDocument()
-    expect(screen.getByText('50')).toBeInTheDocument()
+    expect(screen.getByText(/of your total free time/i)).toBeInTheDocument()
   })
 
   it('calls onUpdate without the deleted goal when × is clicked', () => {

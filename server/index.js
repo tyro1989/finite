@@ -31,10 +31,15 @@ async function initDb() {
       checkins      JSONB DEFAULT '{}'::jsonb,
       people        JSONB DEFAULT '[]'::jsonb,
       weekly_intentions JSONB DEFAULT '{}'::jsonb,
+      weekly_goal_hours JSONB DEFAULT '{}'::jsonb,
+      weekly_reflections JSONB DEFAULT '{}'::jsonb,
       created_at    TIMESTAMPTZ DEFAULT NOW(),
       updated_at    TIMESTAMPTZ DEFAULT NOW()
     )
   `)
+  // Add columns if table already exists from older schema
+  await pool.query(`ALTER TABLE user_data ADD COLUMN IF NOT EXISTS weekly_goal_hours JSONB DEFAULT '{}'::jsonb`)
+  await pool.query(`ALTER TABLE user_data ADD COLUMN IF NOT EXISTS weekly_reflections JSONB DEFAULT '{}'::jsonb`)
   console.log('DB ready')
 }
 
@@ -65,16 +70,18 @@ app.get('/api/users/:id', async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'not found' })
     const row = rows[0]
     res.json({
-      userId:           row.user_id,
-      name:             row.name,
-      birthday:         row.birthday,
-      lifeExpectancy:   row.life_expectancy,
-      onboarded:        row.onboarded,
-      goals:            row.goals,
-      milestones:       row.milestones,
-      checkins:         row.checkins,
-      people:           row.people,
-      weeklyIntentions: row.weekly_intentions,
+      userId:             row.user_id,
+      name:               row.name,
+      birthday:           row.birthday,
+      lifeExpectancy:     row.life_expectancy,
+      onboarded:          row.onboarded,
+      goals:              row.goals,
+      milestones:         row.milestones,
+      checkins:           row.checkins,
+      people:             row.people,
+      weeklyIntentions:   row.weekly_intentions,
+      weeklyGoalHours:    row.weekly_goal_hours,
+      weeklyReflections:  row.weekly_reflections,
     })
   } catch (err) {
     res.status(500).json({ error: err.message })
@@ -83,31 +90,35 @@ app.get('/api/users/:id', async (req, res) => {
 
 // Save (upsert) user data
 app.put('/api/users/:id', async (req, res) => {
-  const { name, birthday, lifeExpectancy, onboarded, goals, milestones, checkins, people, weeklyIntentions } = req.body
+  const { name, birthday, lifeExpectancy, onboarded, goals, milestones, checkins, people, weeklyIntentions, weeklyGoalHours, weeklyReflections } = req.body
   try {
     await pool.query(`
       INSERT INTO user_data
-        (user_id, name, birthday, life_expectancy, onboarded, goals, milestones, checkins, people, weekly_intentions, updated_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10, NOW())
+        (user_id, name, birthday, life_expectancy, onboarded, goals, milestones, checkins, people, weekly_intentions, weekly_goal_hours, weekly_reflections, updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, NOW())
       ON CONFLICT (user_id) DO UPDATE SET
-        name             = EXCLUDED.name,
-        birthday         = EXCLUDED.birthday,
-        life_expectancy  = EXCLUDED.life_expectancy,
-        onboarded        = EXCLUDED.onboarded,
-        goals            = EXCLUDED.goals,
-        milestones       = EXCLUDED.milestones,
-        checkins         = EXCLUDED.checkins,
-        people           = EXCLUDED.people,
-        weekly_intentions = EXCLUDED.weekly_intentions,
-        updated_at       = NOW()
+        name               = EXCLUDED.name,
+        birthday           = EXCLUDED.birthday,
+        life_expectancy    = EXCLUDED.life_expectancy,
+        onboarded          = EXCLUDED.onboarded,
+        goals              = EXCLUDED.goals,
+        milestones         = EXCLUDED.milestones,
+        checkins           = EXCLUDED.checkins,
+        people             = EXCLUDED.people,
+        weekly_intentions  = EXCLUDED.weekly_intentions,
+        weekly_goal_hours  = EXCLUDED.weekly_goal_hours,
+        weekly_reflections = EXCLUDED.weekly_reflections,
+        updated_at         = NOW()
     `, [
       req.params.id,
       name, birthday, lifeExpectancy, onboarded,
-      JSON.stringify(goals        ?? []),
-      JSON.stringify(milestones   ?? {}),
-      JSON.stringify(checkins     ?? {}),
-      JSON.stringify(people       ?? []),
-      JSON.stringify(weeklyIntentions ?? {}),
+      JSON.stringify(goals              ?? []),
+      JSON.stringify(milestones         ?? {}),
+      JSON.stringify(checkins           ?? {}),
+      JSON.stringify(people             ?? []),
+      JSON.stringify(weeklyIntentions   ?? {}),
+      JSON.stringify(weeklyGoalHours    ?? {}),
+      JSON.stringify(weeklyReflections  ?? {}),
     ])
     res.json({ ok: true })
   } catch (err) {

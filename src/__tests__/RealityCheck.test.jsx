@@ -53,12 +53,30 @@ describe('RealityCheck — rendering', () => {
 
   it('shows summers left', () => {
     render(<RealityCheck {...PROPS} />)
-    expect(screen.getByText(/summers left/i)).toBeInTheDocument()
+    expect(screen.getAllByText(/summers left/i).length).toBeGreaterThan(0)
   })
 
   it('shows a closing quote', () => {
     render(<RealityCheck {...PROPS} />)
     expect(screen.getByText(/Stephen R. Covey/i)).toBeInTheDocument()
+  })
+
+  it('shows "Your life, counted differently" section', () => {
+    render(<RealityCheck {...PROPS} />)
+    expect(screen.getByText(/your life, counted differently/i)).toBeInTheDocument()
+  })
+
+  it('shows life seasons — summers, Sunday dinners, birthdays', () => {
+    render(<RealityCheck {...PROPS} />)
+    expect(screen.getByText(/sunday dinners/i)).toBeInTheDocument()
+    expect(screen.getByText(/birthdays to celebrate/i)).toBeInTheDocument()
+    expect(screen.getByText(/full moons to witness/i)).toBeInTheDocument()
+  })
+
+  it('shows people birthdays section when people are provided', () => {
+    render(<RealityCheck {...PROPS} people={PEOPLE} />)
+    expect(screen.getAllByText(/with the people you love/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/birthdays together/i).length).toBeGreaterThan(0)
   })
 })
 
@@ -86,8 +104,8 @@ describe('RealityCheck — people section', () => {
 
   it('shows each person name in the people section', () => {
     render(<RealityCheck {...PROPS} people={PEOPLE} />)
-    expect(screen.getByText('Mom')).toBeInTheDocument()
-    expect(screen.getByText('Sara')).toBeInTheDocument()
+    expect(screen.getAllByText('Mom').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Sara').length).toBeGreaterThan(0)
   })
 
   it('shows total hours with loved ones', () => {

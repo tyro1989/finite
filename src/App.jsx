@@ -49,7 +49,6 @@ export default function App() {
   const userIdRef = useRef(null)
   const saveTimer = useRef(null)
 
-  // ── Bootstrap: resolve userId, load data from API (fallback: localStorage) ──
   useEffect(() => {
     async function bootstrap() {
       let userId = localStorage.getItem(USER_ID_KEY)
@@ -87,13 +86,11 @@ export default function App() {
     bootstrap()
   }, [])
 
-  // ── Persist to localStorage on every change ────────────────────────────────
   useEffect(() => {
     if (loading) return
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   }, [state, loading])
 
-  // ── Debounced sync to backend (1.5s after last change) ────────────────────
   useEffect(() => {
     if (loading || !userIdRef.current || !state.onboarded) return
     clearTimeout(saveTimer.current)
@@ -121,24 +118,14 @@ export default function App() {
 
   return (
     <div style={s.app}>
-      {/* Top bar: brand + sync + reset */}
       <header style={s.header}>
         <div style={s.brand}>Finite</div>
         <div style={s.headerRight}>
-          <div style={s.syncStatus}>
-            {syncing && <span style={s.syncing}>Saving...</span>}
-            {syncError && <span style={s.syncErr} title="Sync failed — saved locally">Offline</span>}
-          </div>
-          <button
-            style={s.resetBtn}
-            onClick={() => { if (window.confirm('Reset all data? This cannot be undone.')) setState(defaultState) }}
-          >
-            Reset
-          </button>
+          {syncing && <span style={s.syncing}>Saving...</span>}
+          {syncError && <span style={s.syncErr}>Offline</span>}
         </div>
       </header>
 
-      {/* Tab bar */}
       <nav style={s.nav}>
         <div style={s.tabs}>
           {TABS.map(tab => {
@@ -149,7 +136,7 @@ export default function App() {
                 style={{ ...s.tab, ...(isActive ? s.tabActive : {}) }}
                 onClick={() => setActiveTab(tab.id)}
               >
-                <span style={{ ...s.tabLabel, ...(isActive ? { color: '#f4f0e8', fontWeight: 600 } : {}) }}>{tab.label}</span>
+                <span style={{ ...s.tabLabel, ...(isActive ? s.tabLabelActive : {}) }}>{tab.label}</span>
                 {isActive && <div style={s.tabIndicator} />}
               </button>
             )
@@ -222,10 +209,10 @@ export default function App() {
 
 function LoadingScreen() {
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontFamily: 'var(--font-serif)', fontSize: 32, color: '#c9a84c' }}>Finite</div>
-        <div style={{ fontSize: 12, color: '#5a5550', marginTop: 12, letterSpacing: '0.1em' }}>LOADING</div>
+        <div style={{ fontFamily: 'var(--font-serif)', fontSize: 32, color: 'var(--accent)' }}>Finite</div>
+        <div style={{ fontSize: 13, color: 'var(--text3)', marginTop: 12 }}>Loading...</div>
       </div>
     </div>
   )
@@ -234,62 +221,52 @@ function LoadingScreen() {
 const s = {
   app: { minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg)' },
 
-  // ── Top header: brand + sync ──
   header: {
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    padding: '12px 24px 0',
+    padding: '16px 20px 0',
     flexShrink: 0,
   },
   brand: {
-    fontFamily: 'var(--font-serif)', fontSize: 20, color: 'var(--accent)',
-    letterSpacing: '0.02em', fontWeight: 400,
+    fontFamily: 'var(--font-serif)', fontSize: 22, color: 'var(--accent)',
+    fontWeight: 400,
   },
-  headerRight: { display: 'flex', alignItems: 'center', gap: 12 },
-  syncStatus: { display: 'flex', alignItems: 'center', gap: 4 },
-  syncing: { fontSize: 11, color: 'var(--text3)', letterSpacing: '0.04em' },
-  syncErr: { fontSize: 11, color: '#e74c3c', letterSpacing: '0.04em' },
-  resetBtn: {
-    background: 'none', color: 'var(--text3)', fontSize: 11, padding: '4px 10px',
-    borderRadius: 4, border: '1px solid var(--border)', letterSpacing: '0.04em',
-  },
+  headerRight: { display: 'flex', alignItems: 'center', gap: 8 },
+  syncing: { fontSize: 12, color: 'var(--text3)' },
+  syncErr: { fontSize: 12, color: 'var(--danger)' },
 
-  // ── Tab bar ──
   nav: {
     position: 'sticky', top: 0, zIndex: 100,
-    background: 'rgba(10,10,10,0.97)', backdropFilter: 'blur(16px)',
+    background: 'var(--bg)',
     borderBottom: '1px solid var(--border)',
-    padding: '0 24px',
+    padding: '0 20px',
     flexShrink: 0,
   },
   tabs: {
     display: 'flex', gap: 0,
-    maxWidth: 1100, margin: '0 auto', width: '100%',
+    maxWidth: 700, margin: '0 auto', width: '100%',
     overflowX: 'auto', scrollbarWidth: 'none',
   },
   tab: {
     position: 'relative',
     background: 'none', border: 'none',
-    display: 'flex', alignItems: 'center', justifyContent: 'center',
-    padding: '14px 20px',
+    padding: '14px 16px',
     cursor: 'pointer',
-    transition: 'color 0.15s ease',
   },
   tabActive: {},
   tabLabel: {
-    fontSize: 14, fontWeight: 500, letterSpacing: '0.03em',
-    color: '#7a7570',
+    fontSize: 15, fontWeight: 500,
+    color: 'var(--text3)',
     whiteSpace: 'nowrap',
-    transition: 'color 0.15s ease',
   },
+  tabLabelActive: { color: 'var(--text)', fontWeight: 600 },
   tabIndicator: {
     position: 'absolute', bottom: 0, left: 12, right: 12,
     height: 2, borderRadius: 1,
     background: 'var(--accent)',
   },
 
-  // ── Main content ──
   main: {
-    flex: 1, padding: '32px 24px 64px',
-    maxWidth: 1100, margin: '0 auto', width: '100%',
+    flex: 1, padding: '24px 20px 100px',
+    maxWidth: 700, margin: '0 auto', width: '100%',
   },
 }

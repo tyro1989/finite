@@ -35,8 +35,16 @@ export default function People({ people, onUpdate }) {
 
       {people.length === 0 && !adding && (
         <div style={s.empty}>
-          <p style={s.emptyText}>No one added yet.</p>
-          <p style={s.emptyNote}>Add the people who matter most and see how many visits — and hours — you have left.</p>
+          <p style={s.emptyText}>Who would you regret not seeing more?</p>
+          <p style={s.emptyNote}>
+            Most of us have already spent 90% of our in-person time with parents by age 18.
+            What remains is a handful of visits stretched across decades. Add someone to see the real number.
+          </p>
+          <div style={s.emptyPrompts}>
+            <span style={s.emptyPrompt}>A parent far away?</span>
+            <span style={s.emptyPrompt}>An aging grandparent?</span>
+            <span style={s.emptyPrompt}>A friend you keep meaning to call?</span>
+          </div>
         </div>
       )}
 
@@ -216,9 +224,14 @@ const s = {
   header: { display: 'flex', flexDirection: 'column', gap: 8 },
   headline: { fontFamily: 'var(--font-serif)', fontSize: 'clamp(28px, 5vw, 44px)', color: 'var(--text)', fontWeight: 400 },
   sub: { fontSize: 16, color: 'var(--text2)', lineHeight: 1.7 },
-  empty: { textAlign: 'center', padding: '40px 0' },
-  emptyText: { fontFamily: 'var(--font-serif)', fontSize: 22, color: 'var(--text3)', fontStyle: 'italic' },
-  emptyNote: { fontSize: 13, color: 'var(--text3)', marginTop: 8 },
+  empty: { textAlign: 'center', padding: '40px 20px' },
+  emptyText: { fontFamily: 'var(--font-serif)', fontSize: 22, color: 'var(--text)', fontWeight: 400 },
+  emptyNote: { fontSize: 14, color: 'var(--text2)', marginTop: 10, lineHeight: 1.6 },
+  emptyPrompts: { display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 16 },
+  emptyPrompt: {
+    fontSize: 12, color: 'var(--accent)', background: '#1a1810',
+    border: '1px solid #2a2418', borderRadius: 20, padding: '6px 14px',
+  },
   list: { display: 'flex', flexDirection: 'column', gap: 16 },
   card: {
     background: 'var(--surface)', border: '1px solid var(--border)',

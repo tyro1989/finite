@@ -2,16 +2,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import App from '../App'
 
-// Prevent real HTTP calls in tests
+const mockLoadUser = vi.fn()
+
 vi.mock('../api', () => ({
-  createUser: vi.fn().mockResolvedValue({ userId: 'test-uuid-1234' }),
-  loadUser:   vi.fn().mockResolvedValue(null),
-  saveUser:   vi.fn().mockResolvedValue(undefined),
+  register:    vi.fn().mockResolvedValue({ userId: 'test-uuid-1234' }),
+  login:       vi.fn().mockResolvedValue({ userId: 'test-uuid-1234' }),
+  linkAccount: vi.fn().mockResolvedValue({ ok: true }),
+  createUser:  vi.fn().mockResolvedValue({ userId: 'test-uuid-1234' }),
+  loadUser:    (...args) => mockLoadUser(...args),
+  saveUser:    vi.fn().mockResolvedValue(undefined),
 }))
 
-// waitFor uses setTimeout internally — it breaks under vi.useFakeTimers().
-// The global beforeEach (test-setup.js) enables fake timers; we undo that here
-// so async loading resolves correctly. App tests don't need a fixed date.
 beforeEach(() => vi.useRealTimers())
 
 const ONBOARDED_STATE = {
@@ -28,15 +29,25 @@ const ONBOARDED_STATE = {
 
 function saveState(state) {
   localStorage.setItem('lifeinweeks_v1', JSON.stringify(state))
+  localStorage.setItem('finite_user_id', 'test-uuid-1234')
+  mockLoadUser.mockResolvedValue({ userId: 'test-uuid-1234', email: 'test@example.com', ...state })
 }
 
 describe('App — initial load', () => {
-  it('shows Onboarding when localStorage is empty', async () => {
+  it('shows Auth screen when no user ID in localStorage', async () => {
+    mockLoadUser.mockResolvedValue(null)
+    render(<App />)
+    await waitFor(() => expect(screen.getByRole('heading', { name: /sign in/i })).toBeInTheDocument())
+  })
+
+  it('shows Onboarding when user is authenticated but not onboarded', async () => {
+    localStorage.setItem('finite_user_id', 'test-uuid-1234')
+    mockLoadUser.mockResolvedValue({ userId: 'test-uuid-1234', email: 'test@example.com', onboarded: false })
     render(<App />)
     await waitFor(() => expect(screen.getByText('3,900')).toBeInTheDocument())
   })
 
-  it('shows the main app when a saved state exists', async () => {
+  it('shows the main app when a saved state exists and user is authenticated', async () => {
     saveState(ONBOARDED_STATE)
     render(<App />)
     await waitFor(() => expect(screen.getByText('Finite')).toBeInTheDocument())

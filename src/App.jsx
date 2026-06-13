@@ -5,7 +5,8 @@ import RealityCheck from './components/RealityCheck'
 import Goals from './components/Goals'
 import People from './components/People'
 import CheckIn from './components/CheckIn'
-import { createUser, loadUser, saveUser } from './api'
+import Auth, { LinkAccount } from './components/Auth'
+import { loadUser, saveUser } from './api'
 
 const STORAGE_KEY = 'lifeinweeks_v1'
 const USER_ID_KEY = 'finite_user_id'
@@ -46,23 +47,18 @@ export default function App() {
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [syncError, setSyncError] = useState(false)
+  const [authenticated, setAuthenticated] = useState(false)
+  const [userEmail, setUserEmail] = useState(null)
   const userIdRef = useRef(null)
   const saveTimer = useRef(null)
 
   useEffect(() => {
     async function bootstrap() {
-      let userId = localStorage.getItem(USER_ID_KEY)
+      const userId = localStorage.getItem(USER_ID_KEY)
 
       if (!userId) {
-        try {
-          const { userId: newId } = await createUser()
-          userId = newId
-          localStorage.setItem(USER_ID_KEY, userId)
-        } catch {
-          setState(loadLocalState())
-          setLoading(false)
-          return
-        }
+        setLoading(false)
+        return
       }
 
       userIdRef.current = userId
@@ -70,13 +66,16 @@ export default function App() {
       try {
         const data = await loadUser(userId)
         if (data) {
-          const { userId: _id, ...rest } = data
+          const { userId: _id, email, ...rest } = data
           setState({ ...defaultState, ...rest })
+          setUserEmail(email || null)
+          setAuthenticated(true)
         } else {
-          setState(loadLocalState())
+          localStorage.removeItem(USER_ID_KEY)
         }
       } catch {
         setState(loadLocalState())
+        setAuthenticated(true)
         setSyncError(true)
       }
 
@@ -110,7 +109,34 @@ export default function App() {
 
   const update = (updates) => setState(prev => ({ ...prev, ...updates }))
 
+  const handleAuth = async (userId) => {
+    localStorage.setItem(USER_ID_KEY, userId)
+    userIdRef.current = userId
+    try {
+      const data = await loadUser(userId)
+      if (data) {
+        const { userId: _id, email, ...rest } = data
+        setState({ ...defaultState, ...rest })
+        setUserEmail(email || null)
+      }
+    } catch {}
+    setAuthenticated(true)
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem(USER_ID_KEY)
+    localStorage.removeItem(STORAGE_KEY)
+    userIdRef.current = null
+    setState(defaultState)
+    setAuthenticated(false)
+    setUserEmail(null)
+  }
+
   if (loading) return <LoadingScreen />
+
+  if (!authenticated) {
+    return <Auth onAuth={handleAuth} />
+  }
 
   if (!state.onboarded) {
     return <Onboarding onComplete={(data) => update({ ...data, onboarded: true })} />
@@ -123,6 +149,7 @@ export default function App() {
         <div style={s.headerRight}>
           {syncing && <span style={s.syncing}>Saving...</span>}
           {syncError && <span style={s.syncErr}>Offline</span>}
+          <button style={s.logoutBtn} onClick={handleLogout}>Sign out</button>
         </div>
       </header>
 
@@ -202,6 +229,13 @@ export default function App() {
             onNavigate={setActiveTab}
           />
         )}
+
+        {/* Link account prompt — only show if no email linked yet */}
+        {!userEmail && activeTab === 'checkin' && (
+          <div style={{ marginTop: 32 }}>
+            <LinkAccount userId={userIdRef.current} onLinked={setUserEmail} />
+          </div>
+        )}
       </main>
     </div>
   )
@@ -233,6 +267,10 @@ const s = {
   headerRight: { display: 'flex', alignItems: 'center', gap: 8 },
   syncing: { fontSize: 12, color: 'var(--text3)' },
   syncErr: { fontSize: 12, color: 'var(--danger)' },
+  logoutBtn: {
+    background: 'none', border: '1px solid var(--border)', color: 'var(--text3)',
+    fontSize: 12, padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
+  },
 
   nav: {
     position: 'sticky', top: 0, zIndex: 100,

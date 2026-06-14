@@ -45,7 +45,8 @@ railway up         # deploy (project already linked)
   onboarded, name, birthday, lifeExpectancy,     // identity
   goals: [],            // { id, title, description, targetAge, hoursPerWeek }
   people: [],           // { id, name, relationship, age, visitsPerYear, lifeExpectancy, hoursPerVisit }
-  milestones: {},       // { [weekIndex]: { text, sentiment: 'enjoyed'|'neutral'|'regret' } }  (legacy: plain string)
+  milestones: {},       // { [weekIndex]: { text, sentiment: 'enjoyed'|'neutral'|'regret', theme } }  (legacy: plain string)
+                        //   theme ∈ family|relationships|career|health|travel|growth|other
   checkins: {},         // { [weekIndex]: 'yes'|'somewhat'|'no' }   ← last-week verdict
   weeklyIntentions: {}, // { [weekIndex]: string }                  ← "what matters this week"
   weeklyGoalHours: {},  // { [weekIndex]: { [goalId]: hours } }
@@ -61,7 +62,7 @@ railway up         # deploy (project already linked)
 | `Onboarding.jsx` | — | 5-step setup before tabs appear |
 | `Auth.jsx` | — | Google primary, email collapsed; exports `LinkAccount` |
 | `CheckIn.jsx` | This Week | **Segmented control: "This week" / "Last week".** This week = daily mood tracker (hero) + focus + goal hours. Last week = verdict + reflection. Autosaves on blur/tap. |
-| `Grid.jsx` | Your Life | Week grid + live ticker + prominent "Add a life event" button (opens modal) + info panel. Tap cell → edit modal. |
+| `Grid.jsx` | Your Life | Week grid + live ticker + "Add a life event" button (modal) + info panel + **memories list**. Grid cells show only phase backdrop / Now / single-gold memory marker / blue intention — **no sentiment colors on the grid** (sentiment shows in the memory list only). Memories carry a `theme`; tapping a theme chip or a "Your moments" count (enjoyed/regrets) filters the memory list AND dims non-matching grid cells. Tap cell or memory row → edit modal. |
 | `Goals.jsx` | Goals | Goal cards with free-weeks/hours math, 10k-hr mastery insight |
 | `People.jsx` | People | Visits/hours remaining, urgency levels |
 | `RealityCheck.jsx` | Reality Check | Time breakdown, life seasons, "what free weeks become" |

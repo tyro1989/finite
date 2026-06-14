@@ -182,7 +182,7 @@ export default function App() {
             weeklyIntentions={state.weeklyIntentions}
             goals={state.goals}
             people={state.people}
-            onMilestone={(wi, text, sentiment) => update({ milestones: { ...state.milestones, [wi]: { text, sentiment: sentiment || 'neutral' } } })}
+            onMilestone={(wi, text, sentiment, theme) => update({ milestones: { ...state.milestones, [wi]: { text, sentiment: sentiment || 'neutral', theme: theme || 'other' } } })}
             onDeleteMilestone={(wi) => {
               const m = { ...state.milestones }
               delete m[wi]

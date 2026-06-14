@@ -46,23 +46,16 @@ describe('Grid — rendering', () => {
     expect(screen.getByRole('button', { name: /share/i })).toBeInTheDocument()
   })
 
-  it('shows the phase legend', () => {
+  it('shows a simplified legend with Now, Memory, Intention', () => {
     render(<Grid {...PROPS} />)
-    // Phase names appear in both the legend and the info panel — use getAllByText
-    expect(screen.getAllByText('Childhood').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getAllByText('Building').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText('Now')).toBeInTheDocument()
+    expect(screen.getByText('Memory')).toBeInTheDocument()
+    expect(screen.getByText('Intention')).toBeInTheDocument()
   })
 
-  it('shows enjoyed and regret in legend', () => {
+  it('shows the phase gradient label', () => {
     render(<Grid {...PROPS} />)
-    expect(screen.getByText('Enjoyed')).toBeInTheDocument()
-    expect(screen.getByText('Regret')).toBeInTheDocument()
-  })
-
-  it('shows a hint to tap a week', () => {
-    render(<Grid {...PROPS} />)
-    expect(screen.getByText(/tap any week to add a milestone/i)).toBeInTheDocument()
+    expect(screen.getByText(/childhood → final chapter/i)).toBeInTheDocument()
   })
 
   it('shows a prominent Add a life event button', () => {
@@ -182,7 +175,6 @@ describe('Grid — right info panel', () => {
   it('shows moments section with enjoyed/regret counts', () => {
     render(<Grid {...PROPS} />)
     expect(screen.getByText(/your moments/i)).toBeInTheDocument()
-    // "enjoyed" appears in legend + info panel + form — use getAllByText
     expect(screen.getAllByText(/enjoyed/i).length).toBeGreaterThanOrEqual(1)
     expect(screen.getByText(/regrets/i)).toBeInTheDocument()
   })
@@ -211,10 +203,10 @@ describe('Grid — right info panel', () => {
     expect(onNavigate).toHaveBeenCalledWith('reality')
   })
 
-  it('this week quick link navigates correctly', () => {
+  it('the intentions moment button navigates to This Week', () => {
     const onNavigate = vi.fn()
     render(<Grid {...PROPS} onNavigate={onNavigate} />)
-    fireEvent.click(screen.getByRole('button', { name: /this week/i }))
+    fireEvent.click(screen.getByRole('button', { name: /intentions/i }))
     expect(onNavigate).toHaveBeenCalledWith('checkin')
   })
 })
@@ -300,18 +292,91 @@ describe('Grid — milestone indicator', () => {
     expect(screen.getAllByTestId('milestone-dot')).toHaveLength(1)
   })
 
-  it('enjoyed milestone dot is green', () => {
-    const milestones = { 5: { text: 'Great trip', sentiment: 'enjoyed' } }
+  it('uses a single gold marker color regardless of sentiment (no color noise)', () => {
+    const milestones = {
+      5: { text: 'Great trip', sentiment: 'enjoyed' },
+      6: { text: 'Bad choice', sentiment: 'regret' },
+    }
     render(<Grid {...PROPS} milestones={milestones} />)
-    const dot = screen.getByTestId('milestone-dot')
-    expect(dot.style.background).toBe('rgb(74, 222, 128)')
+    const dots = screen.getAllByTestId('milestone-dot')
+    expect(dots).toHaveLength(2)
+    // Both dots share the same gold color — sentiment is NOT encoded on the grid
+    expect(dots[0].style.background).toBe(dots[1].style.background)
+    expect(dots[0].style.background).toBe('rgb(184, 134, 11)')
+  })
+})
+
+describe('Grid — memories panel', () => {
+  const milestones = {
+    5:  { text: 'Started new job', sentiment: 'enjoyed', theme: 'career' },
+    10: { text: 'Hospital stay',   sentiment: 'regret',  theme: 'health' },
+    20: { text: 'Trip to Japan',   sentiment: 'enjoyed', theme: 'travel' },
+  }
+
+  it('lists added memories with their text', () => {
+    render(<Grid {...PROPS} milestones={milestones} />)
+    expect(screen.getByText('Started new job')).toBeInTheDocument()
+    expect(screen.getByText('Hospital stay')).toBeInTheDocument()
+    expect(screen.getByText('Trip to Japan')).toBeInTheDocument()
   })
 
-  it('regret milestone dot is red', () => {
-    const milestones = { 5: { text: 'Bad choice', sentiment: 'regret' } }
+  it('shows an empty state when there are no memories', () => {
+    render(<Grid {...PROPS} />)
+    expect(screen.getByText(/no memories yet/i)).toBeInTheDocument()
+  })
+
+  it('shows theme breakdown chips with counts', () => {
     render(<Grid {...PROPS} milestones={milestones} />)
-    const dot = screen.getByTestId('milestone-dot')
-    expect(dot.style.background).toBe('rgb(248, 113, 113)')
+    expect(screen.getByText(/themes/i)).toBeInTheDocument()
+    expect(screen.getByTestId('theme-chip-career')).toBeInTheDocument()
+    expect(screen.getByTestId('theme-chip-travel')).toBeInTheDocument()
+    expect(screen.getByTestId('theme-chip-health')).toBeInTheDocument()
+  })
+
+  it('filters memories by theme when a theme chip is tapped', () => {
+    render(<Grid {...PROPS} milestones={milestones} />)
+    fireEvent.click(screen.getByTestId('theme-chip-travel'))
+    expect(screen.getByText('Trip to Japan')).toBeInTheDocument()
+    expect(screen.queryByText('Started new job')).not.toBeInTheDocument()
+    expect(screen.queryByText('Hospital stay')).not.toBeInTheDocument()
+  })
+
+  it('filters memories by sentiment when a moment button is tapped', () => {
+    render(<Grid {...PROPS} milestones={milestones} />)
+    fireEvent.click(screen.getByRole('button', { name: /regrets/i }))
+    expect(screen.getByText('Hospital stay')).toBeInTheDocument()
+    expect(screen.queryByText('Trip to Japan')).not.toBeInTheDocument()
+  })
+
+  it('clears the filter via Clear filter', () => {
+    render(<Grid {...PROPS} milestones={milestones} />)
+    fireEvent.click(screen.getByTestId('theme-chip-travel'))
+    fireEvent.click(screen.getByRole('button', { name: /clear filter/i }))
+    expect(screen.getByText('Started new job')).toBeInTheDocument()
+    expect(screen.getByText('Trip to Japan')).toBeInTheDocument()
+  })
+
+  it('opens the edit modal when a memory row is clicked', () => {
+    render(<Grid {...PROPS} milestones={milestones} />)
+    fireEvent.click(screen.getByText('Trip to Japan'))
+    // week 20 → "Week 21"
+    expect(screen.getByText('Week 21')).toBeInTheDocument()
+  })
+
+  it('saves a theme with the milestone from the cell modal', () => {
+    const onMilestone = vi.fn()
+    render(<Grid {...PROPS} onMilestone={onMilestone} />)
+    const cells = document.querySelectorAll('[style*="width: 8"]')
+    fireEvent.click(cells[0])
+    fireEvent.change(screen.getByPlaceholderText(/got married/i), { target: { value: 'New memory' } })
+    // pick the Travel theme
+    fireEvent.click(screen.getByRole('button', { name: /travel/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^save$/i }))
+    expect(onMilestone).toHaveBeenCalledOnce()
+    const [, text, sentiment, theme] = onMilestone.mock.calls[0]
+    expect(text).toBe('New memory')
+    expect(theme).toBe('travel')
+    expect(['enjoyed', 'neutral', 'regret']).toContain(sentiment)
   })
 })
 

@@ -1,16 +1,64 @@
-import { useState } from 'react'
-import { register, login } from '../api'
+import { useState, useEffect, useRef } from 'react'
+import { register, login, googleAuth } from '../api'
+
+const GOOGLE_CLIENT_ID = '650167826764-7c5kn3e332pve8nlpvbi8ocfo132mhf9.apps.googleusercontent.com'
 
 export default function Auth({ onAuth }) {
+  const [showEmail, setShowEmail] = useState(false)
   const [mode, setMode] = useState('login')
   const [email, setEmail] = useState('')
   const [passphrase, setPassphrase] = useState('')
+  const [confirmPassphrase, setConfirmPassphrase] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const googleBtnRef = useRef(null)
+
+  useEffect(() => {
+    function initGoogle() {
+      if (!window.google?.accounts?.id) {
+        setTimeout(initGoogle, 200)
+        return
+      }
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleResponse,
+      })
+      if (googleBtnRef.current) {
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: 'outline',
+          size: 'large',
+          width: 340,
+          text: 'continue_with',
+          shape: 'rectangular',
+          logo_alignment: 'center',
+        })
+      }
+    }
+    initGoogle()
+  }, [])
+
+  const handleGoogleResponse = async (response) => {
+    setError('')
+    setLoading(true)
+    try {
+      const result = await googleAuth(response.credential)
+      onAuth(result.userId)
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
+
+    if (mode === 'register' && passphrase !== confirmPassphrase) {
+      setError('Passphrases do not match')
+      return
+    }
+
     setLoading(true)
     try {
       const result = mode === 'login'
@@ -30,42 +78,75 @@ export default function Auth({ onAuth }) {
         <h1 style={s.brand}>Finite</h1>
         <p style={s.subtitle}>Your life in weeks</p>
 
-        <form onSubmit={handleSubmit} style={s.form}>
-          <h2 style={s.title}>{mode === 'login' ? 'Sign in' : 'Create account'}</h2>
+        {/* Google Sign-In — primary */}
+        <div style={s.googleSection}>
+          <div ref={googleBtnRef} style={s.googleBtn} />
+        </div>
 
-          <input
-            type="email"
-            placeholder="Email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            style={s.input}
-            autoComplete="email"
-            required
-          />
-          <input
-            type="password"
-            placeholder="Passphrase"
-            value={passphrase}
-            onChange={e => setPassphrase(e.target.value)}
-            style={s.input}
-            autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-            minLength={4}
-            required
-          />
-
-          {error && <p style={s.error}>{error}</p>}
-
-          <button type="submit" style={s.btn} disabled={loading}>
-            {loading ? '...' : mode === 'login' ? 'Sign in' : 'Create account'}
+        {/* Email toggle */}
+        {!showEmail ? (
+          <button style={s.emailToggle} onClick={() => setShowEmail(true)}>
+            Use email instead
           </button>
-        </form>
+        ) : (
+          <>
+            <div style={s.divider}>
+              <span style={s.dividerLine} />
+              <span style={s.dividerText}>or</span>
+              <span style={s.dividerLine} />
+            </div>
 
-        <button
-          style={s.toggle}
-          onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError('') }}
-        >
-          {mode === 'login' ? "Don't have an account? Create one" : 'Already have an account? Sign in'}
-        </button>
+            <form onSubmit={handleSubmit} style={s.form}>
+              <h2 style={s.title}>{mode === 'login' ? 'Sign in with email' : 'Create account'}</h2>
+
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                style={s.input}
+                autoComplete="email"
+                required
+              />
+              <input
+                type="password"
+                placeholder="Passphrase"
+                value={passphrase}
+                onChange={e => setPassphrase(e.target.value)}
+                style={s.input}
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                minLength={4}
+                required
+              />
+              {mode === 'register' && (
+                <input
+                  type="password"
+                  placeholder="Confirm passphrase"
+                  value={confirmPassphrase}
+                  onChange={e => setConfirmPassphrase(e.target.value)}
+                  style={s.input}
+                  autoComplete="new-password"
+                  minLength={4}
+                  required
+                />
+              )}
+
+              {error && <p style={s.error}>{error}</p>}
+
+              <button type="submit" style={s.btn} disabled={loading}>
+                {loading ? '...' : mode === 'login' ? 'Sign in' : 'Create account'}
+              </button>
+
+              <button
+                type="button"
+                style={s.toggle}
+                onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError(''); setConfirmPassphrase('') }}
+              >
+                {mode === 'login' ? "Don't have an account? Create one" : 'Already have an account? Sign in'}
+              </button>
+            </form>
+          </>
+        )}
       </div>
     </div>
   )
@@ -138,7 +219,7 @@ const s = {
   },
   container: {
     maxWidth: 360, width: '100%', textAlign: 'center',
-    display: 'flex', flexDirection: 'column', gap: 24,
+    display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center',
   },
   brand: {
     fontFamily: 'var(--font-serif)', fontSize: 36, color: 'var(--accent)',
@@ -147,8 +228,36 @@ const s = {
   subtitle: {
     fontSize: 15, color: 'var(--text3)', margin: '-12px 0 0',
   },
+
+  // Google
+  googleSection: {
+    display: 'flex', justifyContent: 'center', width: '100%',
+    marginTop: 8,
+  },
+  googleBtn: {
+    minHeight: 44,
+  },
+
+  // Email toggle
+  emailToggle: {
+    background: 'none', border: 'none', color: 'var(--text3)',
+    fontSize: 14, cursor: 'pointer', padding: '8px 16px',
+    textDecoration: 'underline', textUnderlineOffset: 3,
+  },
+
+  // Divider
+  divider: {
+    display: 'flex', alignItems: 'center', gap: 12, width: '100%',
+  },
+  dividerLine: {
+    flex: 1, height: 1, background: 'var(--border)',
+  },
+  dividerText: {
+    fontSize: 13, color: 'var(--text3)',
+  },
+
   form: {
-    display: 'flex', flexDirection: 'column', gap: 12,
+    display: 'flex', flexDirection: 'column', gap: 12, width: '100%',
     background: 'var(--surface)', border: '1px solid var(--border)',
     borderRadius: 12, padding: '24px 20px',
   },

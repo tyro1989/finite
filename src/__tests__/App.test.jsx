@@ -37,7 +37,7 @@ describe('App — initial load', () => {
   it('shows Auth screen when no user ID in localStorage', async () => {
     mockLoadUser.mockResolvedValue(null)
     render(<App />)
-    await waitFor(() => expect(screen.getByRole('heading', { name: /sign in/i })).toBeInTheDocument())
+    await waitFor(() => expect(screen.getByText(/use email instead/i)).toBeInTheDocument())
   })
 
   it('shows Onboarding when user is authenticated but not onboarded', async () => {
@@ -74,7 +74,7 @@ describe('App — navigation', () => {
 
   it('defaults to the This Week (checkin) tab', async () => {
     await renderAndWait()
-    expect(screen.getByText(/what matters most this week/i)).toBeInTheDocument()
+    expect(screen.getByText(/what matters this week/i)).toBeInTheDocument()
   })
 
   it('switches to Your Life tab', async () => {

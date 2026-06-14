@@ -3,6 +3,7 @@ import { Pool } from 'pg'
 import bcrypt from 'bcryptjs'
 import { fileURLToPath } from 'url'
 import { dirname, join } from 'path'
+import { createRequire } from 'module'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const app = express()
@@ -48,6 +49,18 @@ async function initDb() {
   console.log('DB ready')
 }
 
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || '650167826764-7c5kn3e332pve8nlpvbi8ocfo132mhf9.apps.googleusercontent.com'
+
+function decodeJwtPayload(token) {
+  const parts = token.split('.')
+  if (parts.length !== 3) throw new Error('Invalid token')
+  const payload = JSON.parse(Buffer.from(parts[1], 'base64url').toString())
+  if (payload.aud !== GOOGLE_CLIENT_ID) throw new Error('Invalid audience')
+  if (!['https://accounts.google.com', 'accounts.google.com'].includes(payload.iss)) throw new Error('Invalid issuer')
+  if (payload.exp * 1000 < Date.now()) throw new Error('Token expired')
+  return payload
+}
+
 // ─── Auth routes ─────────────────────────────────────────────────────────────
 
 // Register: create user with email + passphrase
@@ -87,6 +100,33 @@ app.post('/api/login', async (req, res) => {
     res.json({ userId: rows[0].user_id })
   } catch (err) {
     res.status(500).json({ error: err.message })
+  }
+})
+
+// Google Sign-In: verify token, create or login user by email
+app.post('/api/auth/google', async (req, res) => {
+  const { credential } = req.body
+  if (!credential) return res.status(400).json({ error: 'Missing credential' })
+
+  try {
+    const payload = decodeJwtPayload(credential)
+    const email = payload.email.toLowerCase().trim()
+
+    // Check if user exists
+    const { rows } = await pool.query('SELECT user_id FROM user_data WHERE email = $1', [email])
+
+    if (rows.length) {
+      return res.json({ userId: rows[0].user_id })
+    }
+
+    // Create new user with this email
+    const { rows: newRows } = await pool.query(
+      'INSERT INTO user_data (email) VALUES ($1) RETURNING user_id',
+      [email]
+    )
+    res.json({ userId: newRows[0].user_id, isNew: true })
+  } catch (err) {
+    res.status(401).json({ error: err.message })
   }
 })
 

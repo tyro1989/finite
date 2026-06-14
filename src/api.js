@@ -36,6 +36,19 @@ export async function linkAccount(userId, email, passphrase) {
   return res.json()
 }
 
+export async function googleAuth(credential) {
+  const res = await fetch(`${BASE}/auth/google`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ credential }),
+  })
+  if (!res.ok) {
+    const data = await res.json()
+    throw new Error(data.error || 'Google sign-in failed')
+  }
+  return res.json()
+}
+
 export async function createUser() {
   const res = await fetch(`${BASE}/users`, { method: 'POST' })
   if (!res.ok) throw new Error('Failed to create user')

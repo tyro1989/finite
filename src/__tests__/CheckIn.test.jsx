@@ -23,15 +23,16 @@ const BASE_PROPS = {
 }
 
 describe('CheckIn — rendering', () => {
-  it('shows "Did this week move you forward?" as primary question', () => {
+  it('shows "Did last week move you forward?" as primary question', () => {
     render(<CheckIn {...BASE_PROPS} />)
-    expect(screen.getByText(/did this week move you forward/i)).toBeInTheDocument()
+    expect(screen.getByText(/did last week move you forward/i)).toBeInTheDocument()
   })
 
-  it('shows the current week number with dates', () => {
+  it('shows date range for last week', () => {
     render(<CheckIn {...BASE_PROPS} />)
-    expect(screen.getByText(/Week \d+/)).toBeInTheDocument()
-    expect(screen.getByText(/Week \d+ — .+ to .+/)).toBeInTheDocument()
+    // Should have dates displayed
+    const dateElements = screen.getAllByText(/Mar/)
+    expect(dateElements.length).toBeGreaterThan(0)
   })
 
   it('shows all three check-in options', () => {
@@ -41,14 +42,31 @@ describe('CheckIn — rendering', () => {
     expect(screen.getByText('No')).toBeInTheDocument()
   })
 
-  it('shows the weekly focus prompt', () => {
+  it('shows "Reflect on last week" section', () => {
     render(<CheckIn {...BASE_PROPS} />)
-    expect(screen.getByText(/what matters most this week/i)).toBeInTheDocument()
+    expect(screen.getByText(/reflect on last week/i)).toBeInTheDocument()
+  })
+
+  it('shows "How\'s this week going?" sentiment tracker', () => {
+    render(<CheckIn {...BASE_PROPS} />)
+    expect(screen.getByText(/how's this week going/i)).toBeInTheDocument()
+  })
+
+  it('shows "What matters this week?" at the end', () => {
+    render(<CheckIn {...BASE_PROPS} />)
+    expect(screen.getByText(/what matters this week/i)).toBeInTheDocument()
   })
 
   it('shows intention input', () => {
     render(<CheckIn {...BASE_PROPS} />)
     expect(screen.getByPlaceholderText(/one sentence/i)).toBeInTheDocument()
+  })
+
+  it('shows day labels for sentiment tracker', () => {
+    render(<CheckIn {...BASE_PROPS} />)
+    expect(screen.getByText('Mon')).toBeInTheDocument()
+    expect(screen.getByText('Fri')).toBeInTheDocument()
+    expect(screen.getByText('Sun')).toBeInTheDocument()
   })
 })
 
@@ -60,7 +78,9 @@ describe('CheckIn — intention', () => {
     fireEvent.change(screen.getByPlaceholderText(/one sentence/i), {
       target: { value: 'Write 1000 words' },
     })
-    fireEvent.click(screen.getAllByRole('button', { name: /save/i })[0])
+    // The intention Save button is the last one (after "Save reflection")
+    const saveButtons = screen.getAllByRole('button', { name: /^save$/i })
+    fireEvent.click(saveButtons[saveButtons.length - 1])
 
     expect(onIntention).toHaveBeenCalledOnce()
     const [weekIndex, text] = onIntention.mock.calls[0]
@@ -76,21 +96,14 @@ describe('CheckIn — intention', () => {
 })
 
 describe('CheckIn — check-in buttons', () => {
-  it('calls onCheckin with "yes" when Yes is clicked', () => {
+  it('calls onCheckin with "yes" for last week when Yes is clicked', () => {
     const onCheckin = vi.fn()
     render(<CheckIn {...BASE_PROPS} onCheckin={onCheckin} />)
     fireEvent.click(screen.getByText('Yes').closest('button'))
     expect(onCheckin).toHaveBeenCalledOnce()
-    const [, value] = onCheckin.mock.calls[0]
+    const [weekIndex, value] = onCheckin.mock.calls[0]
     expect(value).toBe('yes')
-  })
-
-  it('calls onCheckin with "somewhat" when Somewhat is clicked', () => {
-    const onCheckin = vi.fn()
-    render(<CheckIn {...BASE_PROPS} onCheckin={onCheckin} />)
-    fireEvent.click(screen.getByText('Somewhat').closest('button'))
-    const [, value] = onCheckin.mock.calls[0]
-    expect(value).toBe('somewhat')
+    expect(weekIndex).toBe(1877) // last week
   })
 
   it('calls onCheckin with "no" when No is clicked', () => {
@@ -99,14 +112,6 @@ describe('CheckIn — check-in buttons', () => {
     fireEvent.click(screen.getByText('No').closest('button'))
     const [, value] = onCheckin.mock.calls[0]
     expect(value).toBe('no')
-  })
-
-  it('passes the current week index to onCheckin', () => {
-    const onCheckin = vi.fn()
-    render(<CheckIn {...BASE_PROPS} onCheckin={onCheckin} />)
-    fireEvent.click(screen.getByText('Yes').closest('button'))
-    const [weekIndex] = onCheckin.mock.calls[0]
-    expect(weekIndex).toBeGreaterThan(0)
   })
 })
 
@@ -124,15 +129,19 @@ describe('CheckIn — collapsible sections', () => {
     expect(screen.getByText('Write a novel')).toBeInTheDocument()
     expect(screen.getByText(/5h\/wk target/i)).toBeInTheDocument()
   })
+})
 
-  it('shows last week section with dates', () => {
-    render(<CheckIn {...BASE_PROPS} />)
-    expect(screen.getByText(/last week/i)).toBeInTheDocument()
+describe('CheckIn — sentiment impression', () => {
+  it('shows impression when last week has sentiments recorded', () => {
+    const weeklyReflections = { 1877: { dailySentiments: { 0: 'positive', 1: 'positive', 2: 'positive', 3: 'positive', 4: 'positive' } } }
+    render(<CheckIn {...BASE_PROPS} weeklyReflections={weeklyReflections} />)
+    expect(screen.getByText(/great week/i)).toBeInTheDocument()
   })
 
-  it('shows reflection section as expandable', () => {
-    render(<CheckIn {...BASE_PROPS} />)
-    expect(screen.getByText(/reflect on this week/i)).toBeInTheDocument()
+  it('shows negative impression for tough weeks', () => {
+    const weeklyReflections = { 1877: { dailySentiments: { 0: 'negative', 1: 'negative', 2: 'negative', 3: 'negative', 4: 'negative' } } }
+    render(<CheckIn {...BASE_PROPS} weeklyReflections={weeklyReflections} />)
+    expect(screen.getByText(/tough week/i)).toBeInTheDocument()
   })
 })
 

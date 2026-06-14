@@ -28,9 +28,7 @@ export default function Goals({ birthday, lifeExpectancy, goals, onUpdate, onNav
     <div style={s.container}>
       <div style={s.header}>
         <h1 style={s.headline}>Life Goals</h1>
-        <p style={s.sub}>
-          Define what matters. See exactly how many free weeks and hours you have to make it real.
-        </p>
+        <p style={s.sub}>What matters — and the free time you have to make it real.</p>
       </div>
 
       <ModelNote
@@ -41,10 +39,6 @@ export default function Goals({ birthday, lifeExpectancy, goals, onUpdate, onNav
       {goals.length === 0 && !adding && (
         <div style={s.empty}>
           <p style={s.emptyText}>What will you do with your {formatNumber(totalFreeWeeks)} free weeks?</p>
-          <p style={s.emptyNote}>
-            People who define 3+ life goals report twice as many "great weeks."
-            Your free time is finite — give it direction.
-          </p>
           <div style={s.emptyPrompts}>
             <span style={s.emptyPrompt}>Learn an instrument?</span>
             <span style={s.emptyPrompt}>Write a book?</span>
@@ -218,7 +212,6 @@ const s = {
   sub: { fontSize: 16, color: 'var(--text2)', lineHeight: 1.7 },
   empty: { textAlign: 'center', padding: '40px 20px' },
   emptyText: { fontFamily: 'var(--font-serif)', fontSize: 22, color: 'var(--text)', fontWeight: 400 },
-  emptyNote: { fontSize: 14, color: 'var(--text2)', marginTop: 10, lineHeight: 1.6 },
   emptyPrompts: { display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 16 },
   emptyPrompt: {
     fontSize: 12, color: 'var(--accent)', background: '#fdf6e3',

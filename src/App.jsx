@@ -6,6 +6,7 @@ import Goals from './components/Goals'
 import People from './components/People'
 import CheckIn from './components/CheckIn'
 import Auth, { LinkAccount } from './components/Auth'
+import InstallPrompt from './components/InstallPrompt'
 import { loadUser, saveUser } from './api'
 
 const STORAGE_KEY = 'lifeinweeks_v1'
@@ -142,15 +143,16 @@ export default function App() {
   if (loading) return <LoadingScreen />
 
   if (!authenticated) {
-    return <Auth onAuth={handleAuth} />
+    return <><InstallPrompt /><Auth onAuth={handleAuth} /></>
   }
 
   if (!state.onboarded) {
-    return <Onboarding onComplete={(data) => update({ ...data, onboarded: true })} />
+    return <><InstallPrompt /><Onboarding onComplete={(data) => update({ ...data, onboarded: true })} /></>
   }
 
   return (
     <div style={s.app}>
+      <InstallPrompt />
       <header style={s.header}>
         <div style={s.brand}>Finite</div>
         <div style={s.headerRight}>

@@ -28,10 +28,7 @@ export default function People({ people, onUpdate, onNavigate }) {
     <div style={s.container}>
       <div style={s.header}>
         <h1 style={s.headline}>The People Who Matter</h1>
-        <p style={s.sub}>
-          How many times will you actually see the people you love? How many hours does that add up to?
-          The number is always smaller than you think.
-        </p>
+        <p style={s.sub}>How much time is really left with the people you love?</p>
       </div>
 
       <ModelNote active="people" onNavigate={onNavigate} />
@@ -39,10 +36,6 @@ export default function People({ people, onUpdate, onNavigate }) {
       {people.length === 0 && !adding && (
         <div style={s.empty}>
           <p style={s.emptyText}>Who would you regret not seeing more?</p>
-          <p style={s.emptyNote}>
-            Most of us have already spent 90% of our in-person time with parents by age 18.
-            What remains is a handful of visits stretched across decades. Add someone to see the real number.
-          </p>
           <div style={s.emptyPrompts}>
             <span style={s.emptyPrompt}>A parent far away?</span>
             <span style={s.emptyPrompt}>An aging grandparent?</span>
@@ -229,7 +222,6 @@ const s = {
   sub: { fontSize: 16, color: 'var(--text2)', lineHeight: 1.7 },
   empty: { textAlign: 'center', padding: '40px 20px' },
   emptyText: { fontFamily: 'var(--font-serif)', fontSize: 22, color: 'var(--text)', fontWeight: 400 },
-  emptyNote: { fontSize: 14, color: 'var(--text2)', marginTop: 10, lineHeight: 1.6 },
   emptyPrompts: { display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 16 },
   emptyPrompt: {
     fontSize: 12, color: 'var(--accent)', background: '#fdf6e3',

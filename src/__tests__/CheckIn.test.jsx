@@ -10,14 +10,17 @@ const BASE_PROPS = {
   lifeExpectancy: 75,
   name: '',
   goals: [],
+  people: [],
   checkins: {},
   weeklyIntentions: {},
   weeklyGoalHours: {},
   weeklyReflections: {},
+  customThemes: [],
   onCheckin: vi.fn(),
   onIntention: vi.fn(),
   onGoalHours: vi.fn(),
   onReflection: vi.fn(),
+  onAddTheme: vi.fn(),
 }
 
 describe('CheckIn — view switching', () => {
@@ -134,11 +137,73 @@ describe('CheckIn — Last Week view', () => {
   })
 })
 
+describe('CheckIn — themes', () => {
+  it('shows a theme picker in the This Week focus card', () => {
+    render(<CheckIn {...BASE_PROPS} />)
+    expect(screen.getByTestId('theme-pick-family')).toBeInTheDocument()
+    expect(screen.getByTestId('theme-pick-career')).toBeInTheDocument()
+  })
+
+  it('records a focus theme via onReflection', () => {
+    const onReflection = vi.fn()
+    render(<CheckIn {...BASE_PROPS} onReflection={onReflection} />)
+    fireEvent.click(screen.getByTestId('theme-pick-health'))
+    expect(onReflection).toHaveBeenCalled()
+    const calls = onReflection.mock.calls
+    const last = calls[calls.length - 1][1]
+    expect(last.focusTheme).toBe('health')
+  })
+
+  it('shows custom themes passed in props', () => {
+    render(<CheckIn {...BASE_PROPS} customThemes={[{ value: 'faith', label: 'Faith', icon: '★' }]} />)
+    expect(screen.getByTestId('theme-pick-faith')).toBeInTheDocument()
+  })
+
+  it('can create a custom theme inline', () => {
+    const onAddTheme = vi.fn()
+    render(<CheckIn {...BASE_PROPS} onAddTheme={onAddTheme} />)
+    fireEvent.click(screen.getAllByRole('button', { name: /\+ custom/i })[0])
+    fireEvent.change(screen.getByPlaceholderText(/name your theme/i), { target: { value: 'Fitness' } })
+    fireEvent.click(screen.getByRole('button', { name: /^add$/i }))
+    expect(onAddTheme).toHaveBeenCalledOnce()
+    const theme = onAddTheme.mock.calls[0][0]
+    expect(theme.label).toBe('Fitness')
+    expect(theme.value).toBe('fitness')
+  })
+
+  it('shows a theme picker in the Last Week reflection', () => {
+    render(<CheckIn {...BASE_PROPS} />)
+    fireEvent.click(screen.getByRole('button', { name: /^last week$/i }))
+    expect(screen.getByText(/what did this week center on/i)).toBeInTheDocument()
+    expect(screen.getByTestId('theme-pick-travel')).toBeInTheDocument()
+  })
+})
+
+describe('CheckIn — attention headline', () => {
+  it('shows a streak headline after 3+ good weeks', () => {
+    const checkins = { 1874: 'yes', 1875: 'yes', 1876: 'yes', 1877: 'yes' }
+    render(<CheckIn {...BASE_PROPS} name="Alex" checkins={checkins} />)
+    expect(screen.getByText(/on a \d+-week roll/i)).toBeInTheDocument()
+  })
+
+  it('nudges about an urgent person', () => {
+    const people = [{ id: 1, name: 'Mom', age: 78, visitsPerYear: 4, lifeExpectancy: 82 }]
+    render(<CheckIn {...BASE_PROPS} name="Alex" people={people} />)
+    expect(screen.getByText(/visits left with Mom/i)).toBeInTheDocument()
+  })
+
+  it('shows no headline for a brand-new user with no data', () => {
+    render(<CheckIn {...BASE_PROPS} />)
+    expect(screen.queryByText(/roll|visits left|haven't logged/i)).not.toBeInTheDocument()
+  })
+})
+
 describe('CheckIn — weekly perspective', () => {
   it('shows a perspective line with rotating insight', () => {
     render(<CheckIn {...BASE_PROPS} />)
-    const banner = document.querySelector('[style*="font-style: italic"]')
-    expect(banner).not.toBeNull()
-    expect(banner.textContent.length).toBeGreaterThan(20)
+    // Perspectives all reference remaining time — match the shared phrasing
+    const line = screen.getByText(/remaining|left|remain/i)
+    expect(line).toBeInTheDocument()
+    expect(line.textContent.length).toBeGreaterThan(20)
   })
 })

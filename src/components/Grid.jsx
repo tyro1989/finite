@@ -3,6 +3,8 @@ import {
   getWeeksLived, getAgeAtWeek, getDateAtWeek, formatDate,
   getLifePhase, getSecondsSinceBirth, LIFE_PHASES
 } from '../utils'
+import { getAllThemes, themeMeta as themeMetaShared } from '../themes'
+import ThemePicker from './ThemePicker'
 
 const CELL = 9   // cell size px (8px + 1px gap)
 const COLS = 52  // weeks per row
@@ -26,26 +28,16 @@ const SENTIMENTS = [
   { value: 'regret',  label: 'Regret',  color: '#c62828', bg: '#fbe9e7' },
 ]
 
-// A small, memorable set of life themes for pattern-spotting over time
-const THEMES = [
-  { value: 'family',        label: 'Family',        icon: '♡' },
-  { value: 'relationships', label: 'Relationships', icon: '⚭' },
-  { value: 'career',        label: 'Career',        icon: '◆' },
-  { value: 'health',        label: 'Health',        icon: '✛' },
-  { value: 'travel',        label: 'Travel',        icon: '✈' },
-  { value: 'growth',        label: 'Growth',        icon: '↑' },
-  { value: 'other',         label: 'Other',         icon: '•' },
-]
-const themeMeta = (v) => THEMES.find(t => t.value === v) || THEMES[THEMES.length - 1]
-
 const MEMORY_COLOR = '#b8860b'  // single gold marker for ALL memories — no sentiment color noise on the grid
 
 export default function Grid({
   birthday, lifeExpectancy, name,
   milestones, checkins, weeklyIntentions,
-  goals = [], people = [],
-  onMilestone, onDeleteMilestone, onIntention, onNavigate,
+  goals = [], people = [], customThemes = [],
+  onMilestone, onDeleteMilestone, onIntention, onAddTheme, onNavigate,
 }) {
+  const THEMES = getAllThemes(customThemes)
+  const themeMeta = (v) => themeMetaShared(v, customThemes)
   const totalWeeks = lifeExpectancy * 52
   const weeksLived = getWeeksLived(birthday)
   const weeksRemaining = Math.max(0, totalWeeks - weeksLived)
@@ -476,15 +468,12 @@ export default function Grid({
                 </div>
                 <div style={s.field}>
                   <label style={s.label}>Theme</label>
-                  <div style={s.themePicker}>
-                    {THEMES.map(t => (
-                      <button key={t.value}
-                        style={{ ...s.themePickBtn, ...(form.theme === t.value ? s.themePickActive : {}) }}
-                        onClick={() => setForm(f => ({ ...f, theme: t.value }))}>
-                        <span>{t.icon}</span> {t.label}
-                      </button>
-                    ))}
-                  </div>
+                  <ThemePicker
+                    value={form.theme}
+                    onChange={(v) => setForm(f => ({ ...f, theme: v }))}
+                    customThemes={customThemes}
+                    onAddTheme={onAddTheme}
+                  />
                 </div>
                 <div style={s.field}>
                   <label style={s.label}>How do you feel about it?</label>
@@ -551,15 +540,12 @@ export default function Grid({
                   </div>
                   <div style={s.field}>
                     <label style={s.label}>Theme</label>
-                    <div style={s.themePicker}>
-                      {THEMES.map(t => (
-                        <button key={t.value}
-                          style={{ ...s.themePickBtn, ...(milestoneTheme === t.value ? s.themePickActive : {}) }}
-                          onClick={() => setMilestoneTheme(t.value)}>
-                          <span>{t.icon}</span> {t.label}
-                        </button>
-                      ))}
-                    </div>
+                    <ThemePicker
+                      value={milestoneTheme}
+                      onChange={setMilestoneTheme}
+                      customThemes={customThemes}
+                      onAddTheme={onAddTheme}
+                    />
                   </div>
                   <div style={s.field}>
                     <label style={s.label}>How do you feel about this week?</label>
@@ -758,14 +744,6 @@ const s = {
   field: { display: 'flex', flexDirection: 'column', gap: 6 },
   label: { fontSize: 12, color: 'var(--text2)', fontWeight: 500 },
   weekTag: { color: 'var(--text3)', fontWeight: 400 },
-  themePicker: { display: 'flex', flexWrap: 'wrap', gap: 6 },
-  themePickBtn: {
-    display: 'flex', alignItems: 'center', gap: 5,
-    padding: '7px 11px', borderRadius: 20, fontSize: 13,
-    border: '1.5px solid var(--border)', background: 'transparent',
-    color: 'var(--text2)', cursor: 'pointer',
-  },
-  themePickActive: { borderColor: 'var(--accent)', background: '#fdf6e3', color: 'var(--accent)', fontWeight: 600 },
   sentimentBtns: { display: 'flex', gap: 8 },
   sentimentBtn: {
     flex: 1, padding: '10px 8px', borderRadius: 8, border: '1.5px solid',

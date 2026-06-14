@@ -1,5 +1,57 @@
 import { useState, useEffect } from 'react'
-import { getWeeksLived, getDateAtWeek, getWeeklyPerspective } from '../utils'
+import { getWeeksLived, getDateAtWeek, getWeeklyPerspective, getRemainingVisits } from '../utils'
+import { themeMeta } from '../themes'
+import ThemePicker from './ThemePicker'
+
+// Build a single, personalized attention line from the user's own data.
+// Priority: momentum streak → urgent person → stalled goal → this-week mood → fallback.
+function getAttentionHeadline({ name, currentWeek, checkins, people, goals, weeklyGoalHours, weeklyReflections }) {
+  const who = name ? name.split(' ')[0] : null
+  const greet = who ? `${who}, ` : ''
+
+  // 1) Momentum: consecutive prior weeks marked yes/somewhat
+  let streak = 0
+  for (let i = currentWeek - 1; i >= 0; i--) {
+    if (checkins[i] === 'yes' || checkins[i] === 'somewhat') streak++
+    else break
+  }
+  if (streak >= 3) {
+    return { text: `${greet}you're on a ${streak}-week roll. Protect the streak.`, tone: 'positive' }
+  }
+
+  // 2) Urgent person — fewest visits left
+  if (people && people.length) {
+    const ranked = people
+      .map(p => ({ name: p.name, visits: getRemainingVisits(p.age, p.visitsPerYear, p.lifeExpectancy || 82) }))
+      .sort((a, b) => a.visits - b.visits)
+    const top = ranked[0]
+    if (top && top.visits <= 60) {
+      return { text: `${greet}only about ${top.visits} visits left with ${top.name}. Reach out this week?`, tone: 'urgent' }
+    }
+  }
+
+  // 3) Stalled goal — has goals but no hours logged this week
+  if (goals && goals.length) {
+    const thisWeekHours = weeklyGoalHours[currentWeek] || {}
+    const logged = Object.values(thisWeekHours).reduce((s, h) => s + h, 0)
+    if (logged === 0) {
+      const g = goals[0]
+      return { text: `${greet}you haven't logged time toward "${g.title}" yet this week.`, tone: 'nudge' }
+    }
+  }
+
+  // 4) This week's mood so far
+  const sentiments = (weeklyReflections[currentWeek] || {}).dailySentiments || {}
+  const vals = Object.values(sentiments).filter(Boolean)
+  if (vals.length >= 3) {
+    const pos = vals.filter(v => v === 'positive').length
+    if (pos >= vals.length * 0.6) return { text: `${greet}this week is shaping up well. Keep going.`, tone: 'positive' }
+    const neg = vals.filter(v => v === 'negative').length
+    if (neg >= vals.length * 0.6) return { text: `${greet}a heavy stretch. What's one small thing that would help?`, tone: 'urgent' }
+  }
+
+  return null
+}
 
 const VERDICT_OPTIONS = [
   { value: 'yes',      label: 'Yes',      sub: 'Real progress', color: '#2e7d32', bg: '#e8f5e9' },
@@ -44,9 +96,9 @@ function toneColor(tone) {
 }
 
 export default function CheckIn({
-  birthday, lifeExpectancy, name, goals, checkins, weeklyIntentions,
-  weeklyGoalHours, weeklyReflections, onCheckin, onIntention, onGoalHours,
-  onReflection,
+  birthday, lifeExpectancy, name, goals, people = [], checkins, weeklyIntentions,
+  weeklyGoalHours, weeklyReflections, customThemes = [], onCheckin, onIntention,
+  onGoalHours, onReflection, onAddTheme,
 }) {
   const currentWeek = getWeeksLived(birthday)
   const lastWeek = currentWeek - 1
@@ -59,9 +111,26 @@ export default function CheckIn({
   const lastWeekEnd = getWeekEndDate(lastWeekStart)
 
   const perspective = getWeeklyPerspective(birthday, lifeExpectancy, currentWeek)
+  const headline = getAttentionHeadline({
+    name, currentWeek, checkins, people, goals, weeklyGoalHours, weeklyReflections,
+  })
 
   return (
     <div style={s.page}>
+      {/* Personalized attention banner — driven by the user's own data */}
+      {headline && (
+        <div style={{
+          ...s.attention,
+          borderColor: headline.tone === 'urgent' ? 'var(--danger)' : headline.tone === 'positive' ? 'var(--success)' : 'var(--accent)',
+        }}>
+          <span style={{
+            ...s.attentionDot,
+            background: headline.tone === 'urgent' ? 'var(--danger)' : headline.tone === 'positive' ? 'var(--success)' : 'var(--accent)',
+          }} />
+          <span style={s.attentionText}>{headline.text}</span>
+        </div>
+      )}
+
       <p style={s.perspective}>{perspective}</p>
 
       {/* Segmented control */}
@@ -91,9 +160,11 @@ export default function CheckIn({
           weeklyIntentions={weeklyIntentions}
           weeklyGoalHours={weeklyGoalHours}
           weeklyReflections={weeklyReflections}
+          customThemes={customThemes}
           onIntention={onIntention}
           onGoalHours={onGoalHours}
           onReflection={onReflection}
+          onAddTheme={onAddTheme}
         />
       ) : (
         <LastWeekView
@@ -102,8 +173,10 @@ export default function CheckIn({
           lastWeekEnd={lastWeekEnd}
           checkins={checkins}
           weeklyReflections={weeklyReflections}
+          customThemes={customThemes}
           onCheckin={onCheckin}
           onReflection={onReflection}
+          onAddTheme={onAddTheme}
         />
       )}
     </div>
@@ -113,14 +186,20 @@ export default function CheckIn({
 // ─── This Week: daily driver ───────────────────────────────────────────────
 function ThisWeekView({
   currentWeek, weekStart, weekEnd, goals, weeklyIntentions,
-  weeklyGoalHours, weeklyReflections, onIntention, onGoalHours, onReflection,
+  weeklyGoalHours, weeklyReflections, customThemes, onIntention, onGoalHours,
+  onReflection, onAddTheme,
 }) {
   const existing = weeklyReflections[currentWeek] || {}
   const sentiments = existing.dailySentiments || {}
   const [intention, setIntention] = useState(weeklyIntentions[currentWeek] || '')
   const [focusSaved, setFocusSaved] = useState(false)
+  const focusTheme = existing.focusTheme || null
 
   useEffect(() => { setIntention(weeklyIntentions[currentWeek] || '') }, [currentWeek, weeklyIntentions])
+
+  const setFocusTheme = (theme) => {
+    onReflection(currentWeek, { ...existing, focusTheme: theme })
+  }
 
   const thisWeekHours = weeklyGoalHours[currentWeek] || {}
   const totalHoursLogged = Object.values(thisWeekHours).reduce((sum, h) => sum + h, 0)
@@ -210,6 +289,15 @@ function ThisWeekView({
           />
           {focusSaved && <span style={s.savedTag}>Saved</span>}
         </div>
+        <div style={s.themeBlock}>
+          <span style={s.themeBlockLabel}>Theme</span>
+          <ThemePicker
+            value={focusTheme}
+            onChange={setFocusTheme}
+            customThemes={customThemes}
+            onAddTheme={onAddTheme}
+          />
+        </div>
       </section>
 
       {/* Goal hours — only if goals exist */}
@@ -257,7 +345,7 @@ function ThisWeekView({
 // ─── Last Week: the weekly ritual ──────────────────────────────────────────
 function LastWeekView({
   lastWeek, lastWeekStart, lastWeekEnd, checkins, weeklyReflections,
-  onCheckin, onReflection,
+  customThemes, onCheckin, onReflection, onAddTheme,
 }) {
   const existing = weeklyReflections[lastWeek] || {}
   const sentiments = existing.dailySentiments || {}
@@ -267,6 +355,7 @@ function LastWeekView({
     change: existing.change || '',
   })
   const [saved, setSaved] = useState(false)
+  const reflectionTheme = existing.theme || null
 
   useEffect(() => {
     const e = weeklyReflections[lastWeek] || {}
@@ -280,6 +369,10 @@ function LastWeekView({
     onReflection(lastWeek, { ...existing, ...reflection, dailySentiments: sentiments })
     setSaved(true)
     setTimeout(() => setSaved(false), 1800)
+  }
+
+  const setReflectionTheme = (theme) => {
+    onReflection(lastWeek, { ...existing, ...reflection, theme, dailySentiments: sentiments })
   }
 
   return (
@@ -339,6 +432,15 @@ function LastWeekView({
               placeholder="A specific, actionable change..." rows={2} />
           </div>
         </div>
+        <div style={s.themeBlock}>
+          <span style={s.themeBlockLabel}>What did this week center on?</span>
+          <ThemePicker
+            value={reflectionTheme}
+            onChange={setReflectionTheme}
+            customThemes={customThemes}
+            onAddTheme={onAddTheme}
+          />
+        </div>
         {saved && <span style={s.savedTag}>Saved</span>}
       </section>
     </div>
@@ -350,10 +452,19 @@ const s = {
   view: { display: 'flex', flexDirection: 'column', gap: 16 },
 
   perspective: {
-    fontFamily: 'var(--font-serif)', fontSize: 16, color: 'var(--text2)',
-    lineHeight: 1.6, fontStyle: 'italic', margin: 0,
+    fontFamily: 'var(--font-serif)', fontSize: 19, color: 'var(--text)',
+    lineHeight: 1.5, fontStyle: 'normal', fontWeight: 400, margin: 0,
     paddingBottom: 16, borderBottom: '1px solid var(--border)',
   },
+
+  // Personalized attention banner
+  attention: {
+    display: 'flex', alignItems: 'center', gap: 10,
+    background: 'var(--surface)', border: '1.5px solid', borderRadius: 'var(--radius)',
+    padding: '14px 16px',
+  },
+  attentionDot: { width: 8, height: 8, borderRadius: '50%', flexShrink: 0 },
+  attentionText: { fontSize: 15, color: 'var(--text)', fontWeight: 500, lineHeight: 1.4 },
 
   // Segmented control
   segmented: {
@@ -403,6 +514,10 @@ const s = {
     color: 'var(--text)', padding: '12px 16px', borderRadius: 8, fontSize: 16,
   },
   savedTag: { fontSize: 13, color: 'var(--success)', fontWeight: 500, flexShrink: 0 },
+
+  // Theme block
+  themeBlock: { display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 },
+  themeBlockLabel: { fontSize: 13, color: 'var(--text2)', fontWeight: 500 },
 
   // Goals
   badge: {

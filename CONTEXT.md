@@ -50,7 +50,8 @@ railway up         # deploy (project already linked)
   checkins: {},         // { [weekIndex]: 'yes'|'somewhat'|'no' }   ← last-week verdict
   weeklyIntentions: {}, // { [weekIndex]: string }                  ← "what matters this week"
   weeklyGoalHours: {},  // { [weekIndex]: { [goalId]: hours } }
-  weeklyReflections: {},// { [weekIndex]: { wins, struggles, change, dailySentiments: { [0-6]: 'positive'|'neutral'|'negative' } } }
+  weeklyReflections: {},// { [weekIndex]: { wins, struggles, change, theme, focusTheme, dailySentiments: { [0-6]: 'positive'|'neutral'|'negative' } } }
+  customThemes: [],     // user-defined themes: [{ value, label, icon }]
 }
 ```
 `weekIndex` = whole weeks since birthday (`getWeeksLived`). Day index 0–6 = Mon–Sun within a week.
@@ -61,7 +62,8 @@ railway up         # deploy (project already linked)
 |------|-----|-------|
 | `Onboarding.jsx` | — | 5-step setup before tabs appear |
 | `Auth.jsx` | — | Google primary, email collapsed; exports `LinkAccount` |
-| `CheckIn.jsx` | This Week | **Segmented control: "This week" / "Last week".** This week = daily mood tracker (hero) + focus + goal hours. Last week = verdict + reflection. Autosaves on blur/tap. |
+| `CheckIn.jsx` | This Week | **Segmented control: "This week" / "Last week".** This week = personalized attention banner (`getAttentionHeadline`, driven by streak/urgent-people/stalled-goal/mood) + daily mood tracker (hero) + focus (with theme) + goal hours. Last week = verdict + reflection (with theme). Autosaves on blur/tap. |
+| `ThemePicker.jsx` | — | Reusable chip selector + inline custom-theme creator. Used by Grid (memories) and CheckIn (focus/reflection). Themes live in `src/themes.js` (`BASE_THEMES`, `getAllThemes`, `themeMeta`). Custom themes persist in `customThemes` state. |
 | `Grid.jsx` | Your Life | Week grid + live ticker + "Add a life event" button (modal) + info panel + **memories list**. Grid cells show only phase backdrop / Now / single-gold memory marker / blue intention — **no sentiment colors on the grid** (sentiment shows in the memory list only). Memories carry a `theme`; tapping a theme chip or a "Your moments" count (enjoyed/regrets) filters the memory list AND dims non-matching grid cells. Tap cell or memory row → edit modal. |
 | `Goals.jsx` | Goals | Goal cards with free-weeks/hours math, 10k-hr mastery insight |
 | `People.jsx` | People | Visits/hours remaining, urgency levels |

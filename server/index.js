@@ -43,6 +43,7 @@ async function initDb() {
   `)
   await pool.query(`ALTER TABLE user_data ADD COLUMN IF NOT EXISTS weekly_goal_hours JSONB DEFAULT '{}'::jsonb`)
   await pool.query(`ALTER TABLE user_data ADD COLUMN IF NOT EXISTS weekly_reflections JSONB DEFAULT '{}'::jsonb`)
+  await pool.query(`ALTER TABLE user_data ADD COLUMN IF NOT EXISTS custom_themes JSONB DEFAULT '[]'::jsonb`)
   await pool.query(`ALTER TABLE user_data ADD COLUMN IF NOT EXISTS email TEXT`)
   await pool.query(`ALTER TABLE user_data ADD COLUMN IF NOT EXISTS passphrase TEXT`)
   await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS idx_user_email ON user_data(email) WHERE email IS NOT NULL`)
@@ -190,6 +191,7 @@ app.get('/api/users/:id', async (req, res) => {
       weeklyIntentions:   row.weekly_intentions,
       weeklyGoalHours:    row.weekly_goal_hours,
       weeklyReflections:  row.weekly_reflections,
+      customThemes:       row.custom_themes,
     })
   } catch (err) {
     res.status(500).json({ error: err.message })
@@ -198,12 +200,12 @@ app.get('/api/users/:id', async (req, res) => {
 
 // Save (upsert) user data
 app.put('/api/users/:id', async (req, res) => {
-  const { name, birthday, lifeExpectancy, onboarded, goals, milestones, checkins, people, weeklyIntentions, weeklyGoalHours, weeklyReflections } = req.body
+  const { name, birthday, lifeExpectancy, onboarded, goals, milestones, checkins, people, weeklyIntentions, weeklyGoalHours, weeklyReflections, customThemes } = req.body
   try {
     await pool.query(`
       INSERT INTO user_data
-        (user_id, name, birthday, life_expectancy, onboarded, goals, milestones, checkins, people, weekly_intentions, weekly_goal_hours, weekly_reflections, updated_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, NOW())
+        (user_id, name, birthday, life_expectancy, onboarded, goals, milestones, checkins, people, weekly_intentions, weekly_goal_hours, weekly_reflections, custom_themes, updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13, NOW())
       ON CONFLICT (user_id) DO UPDATE SET
         name               = EXCLUDED.name,
         birthday           = EXCLUDED.birthday,
@@ -216,6 +218,7 @@ app.put('/api/users/:id', async (req, res) => {
         weekly_intentions  = EXCLUDED.weekly_intentions,
         weekly_goal_hours  = EXCLUDED.weekly_goal_hours,
         weekly_reflections = EXCLUDED.weekly_reflections,
+        custom_themes      = EXCLUDED.custom_themes,
         updated_at         = NOW()
     `, [
       req.params.id,
@@ -227,6 +230,7 @@ app.put('/api/users/:id', async (req, res) => {
       JSON.stringify(weeklyIntentions   ?? {}),
       JSON.stringify(weeklyGoalHours    ?? {}),
       JSON.stringify(weeklyReflections  ?? {}),
+      JSON.stringify(customThemes       ?? []),
     ])
     res.json({ ok: true })
   } catch (err) {

@@ -23,6 +23,7 @@ const defaultState = {
   weeklyIntentions: {},
   weeklyGoalHours: {},
   weeklyReflections: {},
+  customThemes: [],
 }
 
 function loadLocalState() {
@@ -109,6 +110,12 @@ export default function App() {
 
   const update = (updates) => setState(prev => ({ ...prev, ...updates }))
 
+  const addCustomTheme = (theme) => setState(prev => {
+    const existing = prev.customThemes || []
+    if (existing.some(t => t.value === theme.value)) return prev
+    return { ...prev, customThemes: [...existing, theme] }
+  })
+
   const handleAuth = async (userId) => {
     localStorage.setItem(USER_ID_KEY, userId)
     userIdRef.current = userId
@@ -182,6 +189,8 @@ export default function App() {
             weeklyIntentions={state.weeklyIntentions}
             goals={state.goals}
             people={state.people}
+            customThemes={state.customThemes || []}
+            onAddTheme={addCustomTheme}
             onMilestone={(wi, text, sentiment, theme) => update({ milestones: { ...state.milestones, [wi]: { text, sentiment: sentiment || 'neutral', theme: theme || 'other' } } })}
             onDeleteMilestone={(wi) => {
               const m = { ...state.milestones }
@@ -213,10 +222,13 @@ export default function App() {
             lifeExpectancy={state.lifeExpectancy}
             name={state.name}
             goals={state.goals}
+            people={state.people}
             checkins={state.checkins}
             weeklyIntentions={state.weeklyIntentions}
             weeklyGoalHours={state.weeklyGoalHours || {}}
             weeklyReflections={state.weeklyReflections || {}}
+            customThemes={state.customThemes || []}
+            onAddTheme={addCustomTheme}
             onCheckin={(wi, val) => update({ checkins: { ...state.checkins, [wi]: val } })}
             onIntention={(wi, text) => update({ weeklyIntentions: { ...state.weeklyIntentions, [wi]: text } })}
             onGoalHours={(wi, goalId, hours) => {

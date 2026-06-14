@@ -212,9 +212,7 @@ export default function App() {
             lifeExpectancy={state.lifeExpectancy}
             name={state.name}
             goals={state.goals}
-            people={state.people}
             checkins={state.checkins}
-            milestones={state.milestones}
             weeklyIntentions={state.weeklyIntentions}
             weeklyGoalHours={state.weeklyGoalHours || {}}
             weeklyReflections={state.weeklyReflections || {}}
@@ -227,8 +225,6 @@ export default function App() {
               update({ weeklyGoalHours: { ...state.weeklyGoalHours, [wi]: weekData } })
             }}
             onReflection={(wi, reflection) => update({ weeklyReflections: { ...state.weeklyReflections, [wi]: reflection } })}
-            onMilestone={(wi, text) => update({ milestones: { ...state.milestones, [wi]: { text, sentiment: 'neutral' } } })}
-            onNavigate={setActiveTab}
           />
         )}
 

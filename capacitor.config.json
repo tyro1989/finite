@@ -1,0 +1,15 @@
+{
+  "appId": "app.finite.life",
+  "appName": "Finite",
+  "webDir": "dist",
+  "server": {
+    "url": "https://web-production-a33b57.up.railway.app",
+    "cleartext": false
+  },
+  "ios": {
+    "contentInset": "always"
+  },
+  "android": {
+    "backgroundColor": "#faf9f7"
+  }
+}

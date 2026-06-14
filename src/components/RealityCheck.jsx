@@ -218,7 +218,7 @@ const s = {
   barLabel: { fontSize: 14, color: 'var(--text)', fontWeight: 500 },
   barWeeks: { fontSize: 13, color: 'var(--text2)' },
   barDesc: { fontSize: 12, color: 'var(--text3)' },
-  track: { height: 5, background: '#1a1a18', borderRadius: 3, overflow: 'hidden' },
+  track: { height: 5, background: 'var(--surface2)', borderRadius: 3, overflow: 'hidden' },
   fill: { height: '100%', borderRadius: 3, transition: 'width 1.2s ease' },
   seasonsGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 14 },
   seasonCard: {
@@ -254,11 +254,11 @@ const s = {
   personCardHours: { fontFamily: 'var(--font-serif)', fontSize: 20, lineHeight: 1, letterSpacing: '-0.01em', marginTop: 6 },
   personCardLabel: { fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.06em' },
   totalHours: {
-    background: '#0f1a14', border: '1px solid #2a4a35',
+    background: '#eaf6ec', border: '1px solid #c3e6c9',
     borderRadius: 10, padding: '20px 24px',
     display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '6px 0',
   },
-  totalHoursNum: { fontFamily: 'var(--font-serif)', fontSize: 32, color: '#4ade80', lineHeight: 1 },
+  totalHoursNum: { fontFamily: 'var(--font-serif)', fontSize: 32, color: '#2e7d32', lineHeight: 1 },
   totalHoursLabel: { fontSize: 15, color: 'var(--text2)', marginLeft: 8 },
   totalHoursNote: { width: '100%', fontSize: 13, color: 'var(--text3)', marginTop: 8, lineHeight: 1.5 },
   quote: { borderLeft: '2px solid var(--border)', paddingLeft: 20 },

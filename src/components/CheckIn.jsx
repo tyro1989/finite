@@ -1,17 +1,17 @@
-import { useState } from 'react'
-import { getWeeksLived, getDateAtWeek, getWeeklyPerspective, getAgeAtWeek } from '../utils'
+import { useState, useEffect } from 'react'
+import { getWeeksLived, getDateAtWeek, getWeeklyPerspective } from '../utils'
 
-const CHECKIN_OPTIONS = [
-  { value: 'yes',      label: 'Yes',      sub: 'Real progress', bg: '#e8f5e9', border: '#66bb6a', activeBg: '#c8e6c9' },
-  { value: 'somewhat', label: 'Somewhat', sub: 'Some drift',    bg: '#fff8e1', border: '#ffa726', activeBg: '#ffecb3' },
-  { value: 'no',       label: 'No',       sub: 'Week slipped',  bg: '#fbe9e7', border: '#ef5350', activeBg: '#ffcdd2' },
+const VERDICT_OPTIONS = [
+  { value: 'yes',      label: 'Yes',      sub: 'Real progress', color: '#2e7d32', bg: '#e8f5e9' },
+  { value: 'somewhat', label: 'Somewhat', sub: 'Some drift',    color: '#b8860b', bg: '#fff8e1' },
+  { value: 'no',       label: 'No',       sub: 'It slipped',    color: '#c62828', bg: '#fbe9e7' },
 ]
 
 const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
-const SENTIMENTS = [
-  { value: 'positive', emoji: '+', color: '#66bb6a', bg: '#e8f5e9' },
-  { value: 'neutral',  emoji: '~', color: '#ffa726', bg: '#fff8e1' },
-  { value: 'negative', emoji: '-', color: '#ef5350', bg: '#fbe9e7' },
+const MOODS = [
+  { value: 'positive', icon: '☺', label: 'Good',  color: '#2e7d32', bg: '#e8f5e9' },
+  { value: 'neutral',  icon: '•', label: 'Okay',  color: '#b8860b', bg: '#fff8e1' },
+  { value: 'negative', icon: '☹', label: 'Hard',  color: '#c62828', bg: '#fbe9e7' },
 ]
 
 function getWeekEndDate(startDate) {
@@ -26,417 +26,421 @@ function formatShortDate(date) {
 
 function getWeekImpression(sentiments) {
   if (!sentiments || Object.keys(sentiments).length === 0) return null
-  const values = Object.values(sentiments)
+  const values = Object.values(sentiments).filter(Boolean)
+  if (!values.length) return null
   const pos = values.filter(v => v === 'positive').length
   const neg = values.filter(v => v === 'negative').length
   const total = values.length
 
-  if (pos >= total * 0.7) return { text: 'Great week — mostly positive days.', tone: 'positive' }
-  if (pos >= total * 0.5) return { text: 'Solid week with more good days than bad.', tone: 'positive' }
-  if (neg >= total * 0.7) return { text: 'Tough week. Be kind to yourself.', tone: 'negative' }
-  if (neg >= total * 0.5) return { text: 'More hard days than easy ones. What drained you?', tone: 'negative' }
+  if (pos >= total * 0.7) return { text: 'A great stretch — most days felt good.', tone: 'positive' }
+  if (pos >= total * 0.5) return { text: 'More good days than hard ones. Nice momentum.', tone: 'positive' }
+  if (neg >= total * 0.7) return { text: 'A heavy week. Be gentle with yourself.', tone: 'negative' }
+  if (neg >= total * 0.5) return { text: 'More hard days than easy. What weighed on you?', tone: 'negative' }
   return { text: 'A mixed week — some ups, some downs.', tone: 'neutral' }
 }
 
+function toneColor(tone) {
+  return tone === 'positive' ? 'var(--success)' : tone === 'negative' ? 'var(--danger)' : 'var(--accent)'
+}
+
 export default function CheckIn({
-  birthday, lifeExpectancy, name, goals, people, checkins, milestones,
-  weeklyIntentions, weeklyGoalHours, weeklyReflections, onCheckin, onIntention,
-  onGoalHours, onReflection, onMilestone, onNavigate,
+  birthday, lifeExpectancy, name, goals, checkins, weeklyIntentions,
+  weeklyGoalHours, weeklyReflections, onCheckin, onIntention, onGoalHours,
+  onReflection,
 }) {
   const currentWeek = getWeeksLived(birthday)
   const lastWeek = currentWeek - 1
 
-  const lastWeekReflection = weeklyReflections[lastWeek] || {}
-  const existingCurrentReflection = weeklyReflections[currentWeek] || {}
+  const [view, setView] = useState('this')
 
-  const [reflection, setReflection] = useState({
-    wins: lastWeekReflection.wins || '',
-    struggles: lastWeekReflection.struggles || '',
-    change: lastWeekReflection.change || '',
-  })
-  const [intention, setIntention] = useState(weeklyIntentions[currentWeek] || '')
-  const [saved, setSaved] = useState(false)
-  const [reflectionSaved, setReflectionSaved] = useState(false)
-  const [showGoals, setShowGoals] = useState(false)
-  const [eventText, setEventText] = useState('')
-  const [eventDate, setEventDate] = useState('')
-  const [eventSaved, setEventSaved] = useState(false)
-
-  const lastWeekCheckin = checkins[lastWeek]
   const weekStart = getDateAtWeek(birthday, currentWeek)
   const weekEnd = getWeekEndDate(weekStart)
   const lastWeekStart = getDateAtWeek(birthday, lastWeek)
   const lastWeekEnd = getWeekEndDate(lastWeekStart)
 
+  const perspective = getWeeklyPerspective(birthday, lifeExpectancy, currentWeek)
+
+  return (
+    <div style={s.page}>
+      <p style={s.perspective}>{perspective}</p>
+
+      {/* Segmented control */}
+      <div style={s.segmented}>
+        <button
+          style={{ ...s.segment, ...(view === 'this' ? s.segmentActive : {}) }}
+          onClick={() => setView('this')}
+        >
+          This week
+        </button>
+        {lastWeek >= 0 && (
+          <button
+            style={{ ...s.segment, ...(view === 'last' ? s.segmentActive : {}) }}
+            onClick={() => setView('last')}
+          >
+            Last week
+          </button>
+        )}
+      </div>
+
+      {view === 'this' ? (
+        <ThisWeekView
+          currentWeek={currentWeek}
+          weekStart={weekStart}
+          weekEnd={weekEnd}
+          goals={goals}
+          weeklyIntentions={weeklyIntentions}
+          weeklyGoalHours={weeklyGoalHours}
+          weeklyReflections={weeklyReflections}
+          onIntention={onIntention}
+          onGoalHours={onGoalHours}
+          onReflection={onReflection}
+        />
+      ) : (
+        <LastWeekView
+          lastWeek={lastWeek}
+          lastWeekStart={lastWeekStart}
+          lastWeekEnd={lastWeekEnd}
+          checkins={checkins}
+          weeklyReflections={weeklyReflections}
+          onCheckin={onCheckin}
+          onReflection={onReflection}
+        />
+      )}
+    </div>
+  )
+}
+
+// ─── This Week: daily driver ───────────────────────────────────────────────
+function ThisWeekView({
+  currentWeek, weekStart, weekEnd, goals, weeklyIntentions,
+  weeklyGoalHours, weeklyReflections, onIntention, onGoalHours, onReflection,
+}) {
+  const existing = weeklyReflections[currentWeek] || {}
+  const sentiments = existing.dailySentiments || {}
+  const [intention, setIntention] = useState(weeklyIntentions[currentWeek] || '')
+  const [focusSaved, setFocusSaved] = useState(false)
+
+  useEffect(() => { setIntention(weeklyIntentions[currentWeek] || '') }, [currentWeek, weeklyIntentions])
+
   const thisWeekHours = weeklyGoalHours[currentWeek] || {}
   const totalHoursLogged = Object.values(thisWeekHours).reduce((sum, h) => sum + h, 0)
 
-  // Daily sentiments for current week
-  const currentSentiments = existingCurrentReflection.dailySentiments || {}
-  const lastWeekSentiments = lastWeekReflection.dailySentiments || {}
-  const lastWeekImpression = getWeekImpression(lastWeekSentiments)
-
-  const handleSaveReflection = () => {
-    onReflection(lastWeek, { ...reflection, dailySentiments: lastWeekSentiments })
-    setReflectionSaved(true)
-    setTimeout(() => setReflectionSaved(false), 2000)
-  }
-
-  const handleSaveIntention = () => {
-    onIntention(currentWeek, intention)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
-  }
-
-  const handleDaySentiment = (dayIndex, sentiment) => {
-    const updated = { ...currentSentiments, [dayIndex]: sentiment }
-    onReflection(currentWeek, { ...existingCurrentReflection, dailySentiments: updated })
-  }
-
-  const perspective = getWeeklyPerspective(birthday, lifeExpectancy, currentWeek)
-
-  // Figure out what day of the week it is relative to the week start
   const today = new Date()
   const daysSinceWeekStart = Math.floor((today - weekStart) / (24 * 60 * 60 * 1000))
   const currentDayIndex = Math.max(0, Math.min(6, daysSinceWeekStart))
 
+  const handleDayMood = (dayIndex, mood) => {
+    const updated = { ...sentiments, [dayIndex]: mood }
+    if (mood === null) delete updated[dayIndex]
+    onReflection(currentWeek, { ...existing, dailySentiments: updated })
+  }
+
+  const saveFocus = () => {
+    onIntention(currentWeek, intention.trim())
+    setFocusSaved(true)
+    setTimeout(() => setFocusSaved(false), 1800)
+  }
+
+  const impression = getWeekImpression(sentiments)
+
   return (
-    <div style={s.page}>
-      {/* Perspective */}
-      <p style={s.perspective}>{perspective}</p>
+    <div style={s.view}>
+      <p style={s.weekRange}>{formatShortDate(weekStart)} – {formatShortDate(weekEnd)}, {weekStart.getFullYear()}</p>
 
-      {/* ═══ 1. LAST WEEK VERDICT ═══ */}
-      {lastWeek >= 0 && (
-        <section style={s.section}>
-          <h2 style={s.question}>Did last week move you forward?</h2>
-          <p style={s.weekLabel}>
-            {formatShortDate(lastWeekStart)} – {formatShortDate(lastWeekEnd)}, {lastWeekStart.getFullYear()}
-          </p>
-
-          {lastWeekImpression && (
-            <p style={{
-              ...s.impression,
-              color: lastWeekImpression.tone === 'positive' ? 'var(--success)'
-                : lastWeekImpression.tone === 'negative' ? 'var(--danger)' : 'var(--accent)',
-            }}>
-              {lastWeekImpression.text}
-            </p>
-          )}
-
-          <div style={s.options}>
-            {CHECKIN_OPTIONS.map(opt => (
-              <button key={opt.value} style={{
-                ...s.option,
-                background: lastWeekCheckin === opt.value ? opt.activeBg : 'var(--surface)',
-                border: `2px solid ${lastWeekCheckin === opt.value ? opt.border : 'var(--border)'}`,
-              }} onClick={() => onCheckin(lastWeek, opt.value)}>
-                <span style={s.optionLabel}>{opt.label}</span>
-                <span style={s.optionSub}>{opt.sub}</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* ═══ 2. REFLECT ON LAST WEEK ═══ */}
-      {lastWeek >= 0 && (
-        <section style={s.section}>
-          <h2 style={s.sectionTitle}>
-            Reflect on last week
-            <span style={s.dateInline}>{formatShortDate(lastWeekStart)} – {formatShortDate(lastWeekEnd)}</span>
-          </h2>
-          <div style={s.reflectionGrid}>
-            <div style={s.reflectionField}>
-              <label style={s.fieldLabel}>What went well?</label>
-              <textarea style={s.textarea} value={reflection.wins}
-                onChange={e => setReflection(r => ({ ...r, wins: e.target.value }))}
-                placeholder="Wins, progress, good decisions..." rows={2} />
-            </div>
-            <div style={s.reflectionField}>
-              <label style={s.fieldLabel}>What didn't go as planned?</label>
-              <textarea style={s.textarea} value={reflection.struggles}
-                onChange={e => setReflection(r => ({ ...r, struggles: e.target.value }))}
-                placeholder="Missed targets, distractions..." rows={2} />
-            </div>
-            <div style={s.reflectionField}>
-              <label style={s.fieldLabel}>One thing to change</label>
-              <textarea style={s.textarea} value={reflection.change}
-                onChange={e => setReflection(r => ({ ...r, change: e.target.value }))}
-                placeholder="A specific, actionable change..." rows={2} />
-            </div>
-          </div>
-          <button style={s.saveBtn} onClick={handleSaveReflection}>
-            {reflectionSaved ? 'Saved' : 'Save reflection'}
-          </button>
-        </section>
-      )}
-
-      {/* ═══ 3. THIS WEEK SENTIMENT TRACKER ═══ */}
-      <section style={s.section}>
-        <h2 style={s.sectionTitle}>
-          How's this week going?
-          <span style={s.dateInline}>{formatShortDate(weekStart)} – {formatShortDate(weekEnd)}</span>
-        </h2>
-        <p style={s.hint}>Tap each day to record how it felt</p>
-        <div style={s.sentimentGrid}>
+      {/* Daily mood — the hero */}
+      <section style={s.card}>
+        <h2 style={s.cardTitle}>How are your days going?</h2>
+        <p style={s.cardHint}>Tap to log how each day felt</p>
+        <div style={s.moodGrid}>
           {DAYS.map((day, i) => {
-            const current = currentSentiments[i]
+            const dayDate = new Date(weekStart)
+            dayDate.setDate(dayDate.getDate() + i)
+            const current = sentiments[i]
             const isFuture = i > currentDayIndex
+            const isToday = i === currentDayIndex
             return (
               <div key={day} style={s.dayCol}>
-                <span style={{ ...s.dayLabel, opacity: isFuture ? 0.4 : 1 }}>{day}</span>
-                <div style={s.sentimentBtns}>
-                  {SENTIMENTS.map(sent => (
-                    <button
-                      key={sent.value}
-                      style={{
-                        ...s.sentimentBtn,
-                        background: current === sent.value ? sent.bg : 'var(--surface)',
-                        border: `1.5px solid ${current === sent.value ? sent.color : 'var(--border)'}`,
-                        color: current === sent.value ? sent.color : 'var(--text3)',
-                        opacity: isFuture ? 0.3 : 1,
-                      }}
-                      onClick={() => !isFuture && handleDaySentiment(i, current === sent.value ? null : sent.value)}
-                      disabled={isFuture}
-                    >
-                      {sent.emoji}
-                    </button>
-                  ))}
+                <span style={{ ...s.dayLabel, color: isToday ? 'var(--accent)' : 'var(--text3)', fontWeight: isToday ? 700 : 500 }}>
+                  {day[0]}
+                </span>
+                <span style={s.dayNum}>{dayDate.getDate()}</span>
+                <div style={s.moodStack}>
+                  {MOODS.map(mood => {
+                    const active = current === mood.value
+                    return (
+                      <button
+                        key={mood.value}
+                        aria-label={`${day} ${mood.label}`}
+                        style={{
+                          ...s.moodBtn,
+                          background: active ? mood.bg : 'transparent',
+                          borderColor: active ? mood.color : 'var(--border)',
+                          color: active ? mood.color : 'var(--text3)',
+                          opacity: isFuture ? 0.3 : 1,
+                        }}
+                        onClick={() => !isFuture && handleDayMood(i, active ? null : mood.value)}
+                        disabled={isFuture}
+                      >
+                        {mood.icon}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
             )
           })}
         </div>
-        {Object.keys(currentSentiments).length > 0 && (() => {
-          const imp = getWeekImpression(currentSentiments)
-          return imp ? <p style={{ ...s.impression, color: imp.tone === 'positive' ? 'var(--success)' : imp.tone === 'negative' ? 'var(--danger)' : 'var(--accent)' }}>{imp.text}</p> : null
-        })()}
+        {impression && (
+          <p style={{ ...s.impression, color: toneColor(impression.tone) }}>{impression.text}</p>
+        )}
       </section>
 
-      {/* ═══ 4. GOAL HOURS (collapsible) ═══ */}
-      {goals.length > 0 && (
-        <section style={s.section}>
-          <button style={s.expandBtn} onClick={() => setShowGoals(!showGoals)}>
-            <span style={s.expandTitle}>
-              Log goal hours {totalHoursLogged > 0 && <span style={s.badge}>{totalHoursLogged}h</span>}
-            </span>
-            <span style={s.expandArrow}>{showGoals ? '−' : '+'}</span>
-          </button>
-          {showGoals && (
-            <div style={s.expandContent}>
-              {goals.map(goal => {
-                const hours = thisWeekHours[goal.id] || ''
-                return (
-                  <div key={goal.id} style={s.goalRow}>
-                    <div style={s.goalInfo}>
-                      <span style={s.goalTitle}>{goal.title}</span>
-                      <span style={s.goalTarget}>{goal.hoursPerWeek}h/wk target</span>
-                    </div>
-                    <div style={s.hoursInput}>
-                      <input
-                        type="number" min="0" max="80" step="0.5" placeholder="0"
-                        value={hours}
-                        onChange={e => {
-                          const val = parseFloat(e.target.value)
-                          onGoalHours(currentWeek, goal.id, isNaN(val) ? 0 : val)
-                        }}
-                        style={s.hoursField}
-                      />
-                      <span style={s.hoursLabel}>hrs</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* ═══ 5. WHAT MATTERS THIS WEEK ═══ */}
-      <section style={s.section}>
-        <h2 style={s.sectionTitle}>
-          What matters this week?
-          <span style={s.dateInline}>{formatShortDate(weekStart)} – {formatShortDate(weekEnd)}</span>
-        </h2>
+      {/* What matters this week */}
+      <section style={s.card}>
+        <h2 style={s.cardTitle}>What matters most this week?</h2>
         <div style={s.focusRow}>
           <input
             type="text"
-            style={s.focusInput}
+            style={s.input}
             value={intention}
             onChange={e => setIntention(e.target.value)}
-            placeholder="One sentence..."
-            onKeyDown={e => e.key === 'Enter' && handleSaveIntention()}
+            onBlur={saveFocus}
+            placeholder="One thing worth protecting..."
+            onKeyDown={e => e.key === 'Enter' && e.target.blur()}
           />
-          <button style={s.saveBtn} onClick={handleSaveIntention}>
-            {saved ? 'Saved' : 'Save'}
-          </button>
+          {focusSaved && <span style={s.savedTag}>Saved</span>}
         </div>
       </section>
 
-      {/* ═══ 6. ADD A LIFE EVENT ═══ */}
-      <section style={s.section}>
-        <h2 style={s.sectionTitle}>Add a life event</h2>
-        <p style={s.hint}>Mark milestones, big moments, or turning points</p>
-        <div style={s.eventForm}>
-          <input
-            type="text"
-            style={s.focusInput}
-            value={eventText}
-            onChange={e => setEventText(e.target.value)}
-            placeholder="What happened?"
-          />
-          <input
-            type="date"
-            style={s.dateInput}
-            value={eventDate}
-            onChange={e => setEventDate(e.target.value)}
-            max={new Date().toISOString().split('T')[0]}
-          />
-          <button
-            style={{ ...s.saveBtn, opacity: eventText && eventDate ? 1 : 0.4 }}
-            disabled={!eventText || !eventDate}
-            onClick={() => {
-              if (!eventText || !eventDate || !onMilestone) return
-              const eventDateObj = new Date(eventDate)
-              const birthDate = new Date(birthday)
-              const weekIndex = Math.floor((eventDateObj - birthDate) / (7 * 24 * 60 * 60 * 1000))
-              onMilestone(weekIndex, eventText)
-              setEventText('')
-              setEventDate('')
-              setEventSaved(true)
-              setTimeout(() => setEventSaved(false), 2000)
-            }}
-          >
-            {eventSaved ? 'Added' : 'Add'}
-          </button>
+      {/* Goal hours — only if goals exist */}
+      {goals.length > 0 && (
+        <section style={s.card}>
+          <div style={s.cardTitleRow}>
+            <h2 style={s.cardTitle}>Hours on your goals</h2>
+            {totalHoursLogged > 0 && <span style={s.badge}>{totalHoursLogged}h</span>}
+          </div>
+          <div style={s.goalList}>
+            {goals.map(goal => {
+              const hours = thisWeekHours[goal.id] || ''
+              const pct = goal.hoursPerWeek > 0 ? Math.min(100, ((hours || 0) / goal.hoursPerWeek) * 100) : 0
+              return (
+                <div key={goal.id} style={s.goalRow}>
+                  <div style={s.goalInfo}>
+                    <span style={s.goalTitle}>{goal.title}</span>
+                    <div style={s.goalBarTrack}>
+                      <div style={{ ...s.goalBarFill, width: `${pct}%` }} />
+                    </div>
+                    <span style={s.goalTarget}>{hours || 0} of {goal.hoursPerWeek}h target</span>
+                  </div>
+                  <div style={s.hoursInput}>
+                    <input
+                      type="number" min="0" max="80" step="0.5" placeholder="0"
+                      value={hours}
+                      onChange={e => {
+                        const val = parseFloat(e.target.value)
+                        onGoalHours(currentWeek, goal.id, isNaN(val) ? 0 : val)
+                      }}
+                      style={s.hoursField}
+                    />
+                    <span style={s.hoursLabel}>hrs</span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+      )}
+    </div>
+  )
+}
+
+// ─── Last Week: the weekly ritual ──────────────────────────────────────────
+function LastWeekView({
+  lastWeek, lastWeekStart, lastWeekEnd, checkins, weeklyReflections,
+  onCheckin, onReflection,
+}) {
+  const existing = weeklyReflections[lastWeek] || {}
+  const sentiments = existing.dailySentiments || {}
+  const [reflection, setReflection] = useState({
+    wins: existing.wins || '',
+    struggles: existing.struggles || '',
+    change: existing.change || '',
+  })
+  const [saved, setSaved] = useState(false)
+
+  useEffect(() => {
+    const e = weeklyReflections[lastWeek] || {}
+    setReflection({ wins: e.wins || '', struggles: e.struggles || '', change: e.change || '' })
+  }, [lastWeek, weeklyReflections])
+
+  const verdict = checkins[lastWeek]
+  const impression = getWeekImpression(sentiments)
+
+  const saveReflection = () => {
+    onReflection(lastWeek, { ...existing, ...reflection, dailySentiments: sentiments })
+    setSaved(true)
+    setTimeout(() => setSaved(false), 1800)
+  }
+
+  return (
+    <div style={s.view}>
+      <p style={s.weekRange}>{formatShortDate(lastWeekStart)} – {formatShortDate(lastWeekEnd)}, {lastWeekStart.getFullYear()}</p>
+
+      {/* Verdict */}
+      <section style={s.card}>
+        <h2 style={s.cardTitle}>Did last week move you forward?</h2>
+        {impression && (
+          <p style={{ ...s.impression, color: toneColor(impression.tone), marginBottom: 4 }}>{impression.text}</p>
+        )}
+        <div style={s.verdictRow}>
+          {VERDICT_OPTIONS.map(opt => {
+            const active = verdict === opt.value
+            return (
+              <button
+                key={opt.value}
+                style={{
+                  ...s.verdict,
+                  background: active ? opt.bg : 'var(--surface)',
+                  borderColor: active ? opt.color : 'var(--border)',
+                }}
+                onClick={() => onCheckin(lastWeek, opt.value)}
+              >
+                <span style={{ ...s.verdictLabel, color: active ? opt.color : 'var(--text)' }}>{opt.label}</span>
+                <span style={s.verdictSub}>{opt.sub}</span>
+              </button>
+            )
+          })}
         </div>
+      </section>
+
+      {/* Reflection */}
+      <section style={s.card}>
+        <h2 style={s.cardTitle}>Reflect</h2>
+        <div style={s.reflectionGrid}>
+          <div style={s.reflectionField}>
+            <label style={s.fieldLabel}>What went well?</label>
+            <textarea style={s.textarea} value={reflection.wins}
+              onChange={e => setReflection(r => ({ ...r, wins: e.target.value }))}
+              onBlur={saveReflection}
+              placeholder="Wins, progress, good decisions..." rows={2} />
+          </div>
+          <div style={s.reflectionField}>
+            <label style={s.fieldLabel}>What didn't go as planned?</label>
+            <textarea style={s.textarea} value={reflection.struggles}
+              onChange={e => setReflection(r => ({ ...r, struggles: e.target.value }))}
+              onBlur={saveReflection}
+              placeholder="Missed targets, distractions..." rows={2} />
+          </div>
+          <div style={s.reflectionField}>
+            <label style={s.fieldLabel}>One thing to change</label>
+            <textarea style={s.textarea} value={reflection.change}
+              onChange={e => setReflection(r => ({ ...r, change: e.target.value }))}
+              onBlur={saveReflection}
+              placeholder="A specific, actionable change..." rows={2} />
+          </div>
+        </div>
+        {saved && <span style={s.savedTag}>Saved</span>}
       </section>
     </div>
   )
 }
 
 const s = {
-  page: {
-    display: 'flex', flexDirection: 'column', gap: 28,
-  },
+  page: { display: 'flex', flexDirection: 'column', gap: 20 },
+  view: { display: 'flex', flexDirection: 'column', gap: 16 },
 
   perspective: {
     fontFamily: 'var(--font-serif)', fontSize: 16, color: 'var(--text2)',
     lineHeight: 1.6, fontStyle: 'italic', margin: 0,
-    padding: '16px 0', borderBottom: '1px solid var(--border)',
+    paddingBottom: 16, borderBottom: '1px solid var(--border)',
   },
 
-  section: { display: 'flex', flexDirection: 'column', gap: 12 },
-
-  question: {
-    fontFamily: 'var(--font-serif)', fontSize: 22, color: 'var(--text)',
-    fontWeight: 400, margin: 0, lineHeight: 1.3,
+  // Segmented control
+  segmented: {
+    display: 'flex', background: 'var(--surface2)', borderRadius: 10, padding: 4, gap: 4,
   },
-  weekLabel: { fontSize: 14, color: 'var(--text3)', margin: 0 },
-
-  sectionTitle: {
-    fontSize: 17, color: 'var(--text)', fontWeight: 500, margin: 0,
-    display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap',
+  segment: {
+    flex: 1, padding: '10px 12px', borderRadius: 8, border: 'none',
+    background: 'transparent', color: 'var(--text3)', fontSize: 15, fontWeight: 500,
+    cursor: 'pointer', transition: 'all 0.15s',
   },
-  dateInline: {
-    fontSize: 13, color: 'var(--text3)', fontWeight: 400,
+  segmentActive: {
+    background: 'var(--surface)', color: 'var(--text)', fontWeight: 600,
+    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
   },
 
-  hint: { fontSize: 13, color: 'var(--text3)', margin: '-4px 0 0' },
+  weekRange: { fontSize: 14, color: 'var(--text3)', margin: 0, textAlign: 'center' },
+
+  card: {
+    background: 'var(--surface)', border: '1px solid var(--border)',
+    borderRadius: 'var(--radius)', padding: 20,
+    display: 'flex', flexDirection: 'column', gap: 12,
+  },
+  cardTitleRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  cardTitle: { fontSize: 17, color: 'var(--text)', fontWeight: 600, margin: 0, lineHeight: 1.3 },
+  cardHint: { fontSize: 13, color: 'var(--text3)', margin: '-6px 0 0' },
 
   impression: {
     fontSize: 14, fontWeight: 500, margin: 0, lineHeight: 1.4,
-    padding: '8px 12px', borderRadius: 8, background: 'var(--surface)',
   },
 
-  options: { display: 'flex', gap: 10, flexWrap: 'wrap' },
-  option: {
-    flex: '1 1 100px', padding: '16px', borderRadius: 'var(--radius)', cursor: 'pointer',
-    display: 'flex', flexDirection: 'column', gap: 4, textAlign: 'center',
-    transition: 'all 0.15s', minWidth: 90,
-  },
-  optionLabel: { fontSize: 16, fontWeight: 600, color: 'var(--text)' },
-  optionSub: { fontSize: 13, color: 'var(--text2)' },
-
-  // Sentiment tracker
-  sentimentGrid: {
-    display: 'flex', gap: 4, justifyContent: 'space-between',
-  },
-  dayCol: {
-    display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, flex: 1,
-  },
-  dayLabel: { fontSize: 11, color: 'var(--text3)', fontWeight: 500 },
-  sentimentBtns: {
-    display: 'flex', flexDirection: 'column', gap: 4,
-  },
-  sentimentBtn: {
-    width: 32, height: 32, borderRadius: 8,
+  // Daily mood
+  moodGrid: { display: 'flex', gap: 4, justifyContent: 'space-between' },
+  dayCol: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, flex: 1 },
+  dayLabel: { fontSize: 13, fontWeight: 500 },
+  dayNum: { fontSize: 10, color: 'var(--text3)', marginBottom: 2 },
+  moodStack: { display: 'flex', flexDirection: 'column', gap: 4 },
+  moodBtn: {
+    width: 34, height: 34, borderRadius: 9, border: '1.5px solid',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: 16, fontWeight: 700, cursor: 'pointer',
-    transition: 'all 0.1s',
+    fontSize: 17, cursor: 'pointer', transition: 'all 0.12s', padding: 0,
   },
 
   // Focus
-  focusRow: { display: 'flex', gap: 8 },
-  focusInput: {
-    flex: 1, background: 'var(--surface)', border: '1px solid var(--border)',
+  focusRow: { display: 'flex', alignItems: 'center', gap: 10 },
+  input: {
+    flex: 1, background: 'var(--surface2)', border: '1px solid var(--border)',
     color: 'var(--text)', padding: '12px 16px', borderRadius: 8, fontSize: 16,
   },
-  saveBtn: {
-    background: 'var(--accent)', border: 'none', color: '#fff',
-    padding: '10px 18px', borderRadius: 8, fontSize: 14, fontWeight: 500,
-    flexShrink: 0, alignSelf: 'flex-start',
-  },
-
-  // Expandable
-  expandBtn: {
-    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    width: '100%', padding: '14px 16px', borderRadius: 'var(--radius)',
-    background: 'var(--surface)', border: '1px solid var(--border)',
-    textAlign: 'left',
-  },
-  expandTitle: { fontSize: 15, fontWeight: 500, color: 'var(--text)', display: 'flex', alignItems: 'center', gap: 8 },
-  expandArrow: { fontSize: 18, color: 'var(--text3)', fontWeight: 300, lineHeight: 1 },
-  expandContent: {
-    display: 'flex', flexDirection: 'column', gap: 12,
-    padding: '4px 0',
-  },
-  badge: {
-    fontSize: 12, background: 'var(--surface2)', color: 'var(--accent)',
-    padding: '2px 8px', borderRadius: 10, fontWeight: 600,
-  },
+  savedTag: { fontSize: 13, color: 'var(--success)', fontWeight: 500, flexShrink: 0 },
 
   // Goals
-  goalRow: {
-    background: 'var(--surface2)', borderRadius: 8, padding: '12px 14px',
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+  badge: {
+    fontSize: 13, background: 'var(--surface2)', color: 'var(--accent)',
+    padding: '2px 10px', borderRadius: 12, fontWeight: 600,
   },
-  goalInfo: { display: 'flex', flexDirection: 'column', gap: 2, flex: 1, minWidth: 0 },
+  goalList: { display: 'flex', flexDirection: 'column', gap: 10 },
+  goalRow: {
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+  },
+  goalInfo: { display: 'flex', flexDirection: 'column', gap: 5, flex: 1, minWidth: 0 },
   goalTitle: { fontSize: 15, color: 'var(--text)', fontWeight: 500 },
+  goalBarTrack: { height: 4, background: 'var(--surface2)', borderRadius: 2, overflow: 'hidden' },
+  goalBarFill: { height: '100%', background: 'var(--accent)', borderRadius: 2, transition: 'width 0.3s ease' },
   goalTarget: { fontSize: 12, color: 'var(--text3)' },
   hoursInput: { display: 'flex', alignItems: 'center', gap: 5, flexShrink: 0 },
   hoursField: {
-    width: 56, background: 'var(--surface)', border: '1px solid var(--border)',
-    color: 'var(--text)', padding: '8px', borderRadius: 6, fontSize: 15, textAlign: 'right',
+    width: 60, background: 'var(--surface2)', border: '1px solid var(--border)',
+    color: 'var(--text)', padding: '10px 8px', borderRadius: 8, fontSize: 16, textAlign: 'center',
   },
   hoursLabel: { fontSize: 12, color: 'var(--text3)' },
 
-  // Life event
-  eventForm: {
-    display: 'flex', flexDirection: 'column', gap: 8,
+  // Verdict
+  verdictRow: { display: 'flex', gap: 8 },
+  verdict: {
+    flex: 1, padding: '14px 8px', borderRadius: 10, border: '2px solid', cursor: 'pointer',
+    display: 'flex', flexDirection: 'column', gap: 3, textAlign: 'center',
+    transition: 'all 0.12s', minWidth: 0,
   },
-  dateInput: {
-    background: 'var(--surface)', border: '1px solid var(--border)',
-    color: 'var(--text)', padding: '12px 16px', borderRadius: 8, fontSize: 16,
-    width: '100%',
-  },
+  verdictLabel: { fontSize: 16, fontWeight: 600 },
+  verdictSub: { fontSize: 12, color: 'var(--text3)' },
 
   // Reflection
-  reflectionGrid: { display: 'flex', flexDirection: 'column', gap: 10 },
-  reflectionField: { display: 'flex', flexDirection: 'column', gap: 4 },
+  reflectionGrid: { display: 'flex', flexDirection: 'column', gap: 12 },
+  reflectionField: { display: 'flex', flexDirection: 'column', gap: 5 },
   fieldLabel: { fontSize: 13, color: 'var(--text2)', fontWeight: 500 },
   textarea: {
-    background: 'var(--surface)', border: '1px solid var(--border)',
+    background: 'var(--surface2)', border: '1px solid var(--border)',
     color: 'var(--text)', padding: '12px 14px', borderRadius: 8,
     fontSize: 15, lineHeight: 1.5, resize: 'vertical',
   },

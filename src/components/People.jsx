@@ -229,8 +229,8 @@ const s = {
   emptyNote: { fontSize: 14, color: 'var(--text2)', marginTop: 10, lineHeight: 1.6 },
   emptyPrompts: { display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'center', marginTop: 16 },
   emptyPrompt: {
-    fontSize: 12, color: 'var(--accent)', background: '#1a1810',
-    border: '1px solid #2a2418', borderRadius: 20, padding: '6px 14px',
+    fontSize: 12, color: 'var(--accent)', background: '#fdf6e3',
+    border: '1px solid #ece3c8', borderRadius: 20, padding: '6px 14px',
   },
   list: { display: 'flex', flexDirection: 'column', gap: 16 },
   card: {
@@ -263,13 +263,13 @@ const s = {
   label: { fontSize: 10, color: 'var(--text3)', textTransform: 'uppercase', letterSpacing: '0.08em' },
   row: { display: 'flex', gap: 16, flexWrap: 'wrap' },
   preview: {
-    background: '#181816', borderLeft: '2px solid var(--accent)',
+    background: 'var(--surface2)', borderLeft: '2px solid var(--accent)',
     borderRadius: '0 6px 6px 0', padding: '12px 14px',
     fontSize: 14, color: 'var(--text2)', lineHeight: 1.6,
   },
   formActions: { display: 'flex', gap: 10, justifyContent: 'flex-end' },
   cancelBtn: { background: 'none', border: '1px solid var(--border)', color: 'var(--text3)', padding: '8px 16px', borderRadius: 6, fontSize: 13 },
-  addBtn: { background: 'var(--accent)', color: '#0a0a0a', padding: '8px 22px', borderRadius: 6, fontSize: 13, fontWeight: 600, border: 'none' },
+  addBtn: { background: 'var(--accent)', color: '#fff', padding: '8px 22px', borderRadius: 6, fontSize: 13, fontWeight: 600, border: 'none' },
   newBtn: {
     background: 'none', border: '2px dashed var(--border)', color: 'var(--text3)',
     padding: '16px 24px', borderRadius: 10, fontSize: 14, textAlign: 'left',

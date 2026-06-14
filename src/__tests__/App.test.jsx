@@ -74,7 +74,7 @@ describe('App — navigation', () => {
 
   it('defaults to the This Week (checkin) tab', async () => {
     await renderAndWait()
-    expect(screen.getByText(/what matters this week/i)).toBeInTheDocument()
+    expect(screen.getByText(/how are your days going/i)).toBeInTheDocument()
   })
 
   it('switches to Your Life tab', async () => {

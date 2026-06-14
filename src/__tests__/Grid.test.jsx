@@ -60,9 +60,14 @@ describe('Grid — rendering', () => {
     expect(screen.getByText('Regret')).toBeInTheDocument()
   })
 
-  it('shows a hint to click/hover', () => {
+  it('shows a hint to tap a week', () => {
     render(<Grid {...PROPS} />)
-    expect(screen.getByText(/click to add a milestone/i)).toBeInTheDocument()
+    expect(screen.getByText(/tap any week to add a milestone/i)).toBeInTheDocument()
+  })
+
+  it('shows a prominent Add a life event button', () => {
+    render(<Grid {...PROPS} />)
+    expect(screen.getByRole('button', { name: /add a life event/i })).toBeInTheDocument()
   })
 })
 
@@ -89,19 +94,26 @@ describe('Grid — current week', () => {
   })
 })
 
-describe('Grid — date entry form', () => {
-  it('shows the date entry form', () => {
+describe('Grid — add-by-date modal', () => {
+  function openAddModal() {
+    fireEvent.click(screen.getByRole('button', { name: /add a life event/i }))
+  }
+
+  it('opens a modal titled "Add a life event by date"', () => {
     render(<Grid {...PROPS} />)
+    openAddModal()
     expect(screen.getByText(/add a life event by date/i)).toBeInTheDocument()
   })
 
-  it('has a date input', () => {
+  it('has a date input in the modal', () => {
     render(<Grid {...PROPS} />)
+    openAddModal()
     expect(document.querySelector('input[type="date"]')).toBeInTheDocument()
   })
 
   it('shows event and sentiment fields for a past date', () => {
     render(<Grid {...PROPS} />)
+    openAddModal()
     const dateInput = document.querySelector('input[type="date"]')
     fireEvent.change(dateInput, { target: { value: '2021-06-01' } })
     expect(screen.getByPlaceholderText(/first day at new job/i)).toBeInTheDocument()
@@ -110,6 +122,7 @@ describe('Grid — date entry form', () => {
 
   it('shows intention field for a future date', () => {
     render(<Grid {...PROPS} />)
+    openAddModal()
     const dateInput = document.querySelector('input[type="date"]')
     // lifeExpectancy 10 years from 2020 → grid goes to ~2030
     fireEvent.change(dateInput, { target: { value: '2028-01-01' } })
@@ -119,6 +132,7 @@ describe('Grid — date entry form', () => {
   it('calls onMilestone with sentiment when past event is submitted', () => {
     const onMilestone = vi.fn()
     render(<Grid {...PROPS} onMilestone={onMilestone} />)
+    openAddModal()
     const dateInput = document.querySelector('input[type="date"]')
     fireEvent.change(dateInput, { target: { value: '2021-06-01' } })
     fireEvent.change(screen.getByPlaceholderText(/first day at new job/i), {
@@ -134,6 +148,7 @@ describe('Grid — date entry form', () => {
   it('calls onIntention when future event is submitted', () => {
     const onIntention = vi.fn()
     render(<Grid {...PROPS} onIntention={onIntention} />)
+    openAddModal()
     const dateInput = document.querySelector('input[type="date"]')
     fireEvent.change(dateInput, { target: { value: '2028-01-01' } })
     fireEvent.change(screen.getByPlaceholderText(/what matters most this week/i), {
@@ -143,6 +158,13 @@ describe('Grid — date entry form', () => {
     expect(onIntention).toHaveBeenCalledOnce()
     const [, text] = onIntention.mock.calls[0]
     expect(text).toBe('Finish the book')
+  })
+
+  it('closes the add modal on Cancel', () => {
+    render(<Grid {...PROPS} />)
+    openAddModal()
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+    expect(screen.queryByText(/add a life event by date/i)).not.toBeInTheDocument()
   })
 })
 

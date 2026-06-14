@@ -116,23 +116,20 @@ User action → setState() → localStorage (immediate) → PUT /api/users/:id (
 
 ### 1. This Week (`checkin`)
 
-The home tab. Weekly reflection and planning.
+The home tab. A **segmented control** splits it into two focused views to keep cognitive load low:
 
-- **Week header:** "Week N" with date range (Mon–Sun)
-- **Weekly focus:** Single-line intention input
-- **Goal hours tracking:** Log hours per goal this week, progress bars
-- **Reflection form:**
-  - "What went well?" (wins)
-  - "What didn't go as planned?" (struggles)
-  - "One thing I'll change next week" (action)
-- **Sentiment check-in:** "Did this week move you forward?"
-  - Yes (green) / Somewhat (tan) / No (red)
-- **Sidebar stats:**
-  - Current streak count
-  - Hours logged this week
-  - "Great weeks" count (sentiment = yes)
-  - "Lost weeks" count (sentiment = no)
-- **Sidebar nav cards:** Quick links to other tabs with summary stats
+**This week** (daily driver, default):
+- Rotating perspective line + week date range
+- **Daily mood tracker (hero):** tap Good / Okay / Hard per day (Mon–Sun); future days disabled; live impression summarizes the week from logged moods
+- **"What matters most this week?"** single-line focus (autosaves on blur)
+- **Goal hours** with inline progress bars (only if goals exist)
+
+**Last week** (the weekly ritual):
+- **"Did last week move you forward?"** verdict — Yes / Somewhat / No
+- Impression derived from last week's logged daily moods
+- **Reflect:** wins / struggles / one thing to change (autosaves on blur)
+
+> Daily moods live in `weeklyReflections[week].dailySentiments`. They feed the verdict impression — the data the user taps this week becomes the evidence when they evaluate the week next week.
 
 ### 2. Your Life (`grid`)
 
@@ -256,20 +253,23 @@ All components receive state + update function as props from App.jsx.
 
 ## Design System
 
-### Color Palette
+### Color Palette (light theme — auto dark via `prefers-color-scheme`)
 
 | Token | Value | Usage |
 |-------|-------|-------|
-| `--bg` | #0a0a0a | Background |
-| `--surface` | #141414 | Card/panel backgrounds |
-| `--surface2` | #1e1e1e | Input backgrounds |
-| `--border` | #2a2a2a | Borders |
-| `--text` | #f4f0e8 | Primary text (warm off-white) |
-| `--text2` | #a09a94 | Secondary text |
-| `--text3` | #5a5550 | Tertiary/muted text |
-| `--accent` | #c9a84c | Gold — primary accent |
-| `--accent2` | #e8856a | Coral — secondary accent |
-| `--success` | #6a9a5a | Green — positive states |
+| `--bg` | #faf9f7 | Background |
+| `--surface` | #ffffff | Card/panel backgrounds |
+| `--surface2` | #f3f1ee | Input backgrounds |
+| `--border` | #e8e5e0 | Borders |
+| `--text` | #1a1a1a | Primary text |
+| `--text2` | #5c5650 | Secondary text |
+| `--text3` | #9a9490 | Tertiary/muted text |
+| `--accent` | #b8860b | Gold — primary accent |
+| `--accent2` | #d4713a | Coral — secondary accent |
+| `--success` | #2e7d32 | Green — positive states |
+| `--danger` | #c62828 | Red — negative states |
+
+> Always reference these variables, never hardcoded hex. Dark-theme overrides live in the `@media (prefers-color-scheme: dark)` block in `src/index.css`.
 
 ### Sentiment Colors
 

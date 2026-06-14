@@ -17,6 +17,20 @@ const SAMPLE_PERSON = {
   hoursPerVisit: 3,
 }
 
+describe('People — mental-model note', () => {
+  it('frames people vs goals and cross-links the tabs', () => {
+    render(<People {...BASE_PROPS} />)
+    expect(screen.getByText(/people is who you want time with/i)).toBeInTheDocument()
+  })
+
+  it('navigates to Goals from the model note', () => {
+    const onNavigate = vi.fn()
+    render(<People {...BASE_PROPS} onNavigate={onNavigate} />)
+    fireEvent.click(screen.getByRole('button', { name: /Goalswhat to achieve/i }))
+    expect(onNavigate).toHaveBeenCalledWith('goals')
+  })
+})
+
 describe('People — empty state', () => {
   it('renders the headline', () => {
     render(<People {...BASE_PROPS} />)

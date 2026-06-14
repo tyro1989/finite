@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { getRemainingVisits, formatNumber } from '../utils'
+import ModelNote from './ModelNote'
 
 const RELATIONSHIPS = ['Parent', 'Grandparent', 'Sibling', 'Partner', 'Child', 'Close friend', 'Mentor', 'Other']
 const emptyForm = { name: '', age: '', relationship: 'Parent', visitsPerYear: 12, lifeExpectancy: 82, hoursPerVisit: 3 }
 
-export default function People({ people, onUpdate }) {
+export default function People({ people, onUpdate, onNavigate }) {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(emptyForm)
 
@@ -32,6 +33,8 @@ export default function People({ people, onUpdate }) {
           The number is always smaller than you think.
         </p>
       </div>
+
+      <ModelNote active="people" onNavigate={onNavigate} />
 
       {people.length === 0 && !adding && (
         <div style={s.empty}>

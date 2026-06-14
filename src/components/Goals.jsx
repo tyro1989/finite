@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { getFreeWeeksToGoal, getCurrentAge, getWeeksLived, getRealityBreakdown, formatNumber } from '../utils'
+import ModelNote from './ModelNote'
 
 const emptyForm = { title: '', description: '', targetAge: '', hoursPerWeek: 5 }
 
-export default function Goals({ birthday, lifeExpectancy, goals, onUpdate }) {
+export default function Goals({ birthday, lifeExpectancy, goals, onUpdate, onNavigate }) {
   const [adding, setAdding] = useState(false)
   const [form, setForm] = useState(emptyForm)
 
@@ -31,6 +32,11 @@ export default function Goals({ birthday, lifeExpectancy, goals, onUpdate }) {
           Define what matters. See exactly how many free weeks and hours you have to make it real.
         </p>
       </div>
+
+      <ModelNote
+        active="goals"
+        onNavigate={onNavigate}
+      />
 
       {goals.length === 0 && !adding && (
         <div style={s.empty}>

@@ -201,10 +201,11 @@ export default function App() {
             lifeExpectancy={state.lifeExpectancy}
             goals={state.goals}
             onUpdate={(goals) => update({ goals })}
+            onNavigate={setActiveTab}
           />
         )}
         {activeTab === 'people' && (
-          <People people={state.people} onUpdate={(people) => update({ people })} />
+          <People people={state.people} onUpdate={(people) => update({ people })} onNavigate={setActiveTab} />
         )}
         {activeTab === 'checkin' && (
           <CheckIn

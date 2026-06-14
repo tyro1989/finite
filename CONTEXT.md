@@ -65,6 +65,7 @@ railway up         # deploy (project already linked)
 | `Grid.jsx` | Your Life | Week grid + live ticker + "Add a life event" button (modal) + info panel + **memories list**. Grid cells show only phase backdrop / Now / single-gold memory marker / blue intention — **no sentiment colors on the grid** (sentiment shows in the memory list only). Memories carry a `theme`; tapping a theme chip or a "Your moments" count (enjoyed/regrets) filters the memory list AND dims non-matching grid cells. Tap cell or memory row → edit modal. |
 | `Goals.jsx` | Goals | Goal cards with free-weeks/hours math, 10k-hr mastery insight |
 | `People.jsx` | People | Visits/hours remaining, urgency levels |
+| `ModelNote.jsx` | — | Shared orienting strip atop Goals & People. Makes the mental model explicit (Goals = what to achieve · People = who to cherish · Your Life = what you lived) and cross-links the tabs. **People & Goals are intentionally kept separate** (distinct time-math); this note is how we keep them feeling connected without merging. |
 | `RealityCheck.jsx` | Reality Check | Time breakdown, life seasons, "what free weeks become" |
 
 ## Design system (light theme)

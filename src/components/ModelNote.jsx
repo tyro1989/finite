@@ -6,11 +6,10 @@
 const PIECES = {
   goals:   { icon: '◎', label: 'Goals',   note: 'what to achieve' },
   people:  { icon: '♡', label: 'People',  note: 'who to cherish' },
-  grid:    { icon: '▦', label: 'Your Life', note: 'what you lived' },
 }
 
 export default function ModelNote({ active, onNavigate }) {
-  const order = ['goals', 'people', 'grid']
+  const order = ['goals', 'people']
   return (
     <div style={s.wrap}>
       <p style={s.lead}>
@@ -26,7 +25,7 @@ export default function ModelNote({ active, onNavigate }) {
             <span key={key} style={s.itemWrap}>
               <button
                 style={{ ...s.chip, ...(isActive ? s.chipActive : {}) }}
-                onClick={() => !isActive && onNavigate?.(key === 'grid' ? 'grid' : key)}
+                onClick={() => !isActive && onNavigate?.(key)}
                 disabled={isActive}
               >
                 <span style={s.chipIcon}>{p.icon}</span>

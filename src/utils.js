@@ -1,15 +1,14 @@
+// Simple, universal demarcations: early years (0–5), school years (5–18),
+// and adult life (18 → life expectancy). The adult band's end is driven by
+// the user's own life expectancy rather than fixed buckets.
 export const LIFE_PHASES = [
-  { name: 'Childhood',     startAge: 0,  endAge: 12, color: '#4a7fa5' },
-  { name: 'Adolescence',   startAge: 13, endAge: 17, color: '#7a5fa5' },
-  { name: 'Young Adult',   startAge: 18, endAge: 25, color: '#5a9a7a' },
-  { name: 'Building',      startAge: 26, endAge: 40, color: '#c9a84c' },
-  { name: 'Prime',         startAge: 41, endAge: 60, color: '#c97a4c' },
-  { name: 'Wisdom',        startAge: 61, endAge: 75, color: '#7a9a5a' },
-  { name: 'Final Chapter', startAge: 76, endAge: 120, color: '#a57a5a' },
+  { name: 'Early years',  startAge: 0,  endAge: 5,   color: '#4a7fa5' },
+  { name: 'School years', startAge: 5,  endAge: 18,  color: '#5a9a7a' },
+  { name: 'Adult life',   startAge: 18, endAge: 200, color: '#c9a84c' },
 ]
 
 export function getLifePhase(ageInYears) {
-  return LIFE_PHASES.find(p => ageInYears >= p.startAge && ageInYears <= p.endAge) || LIFE_PHASES[LIFE_PHASES.length - 1]
+  return LIFE_PHASES.find(p => ageInYears >= p.startAge && ageInYears < p.endAge) || LIFE_PHASES[LIFE_PHASES.length - 1]
 }
 
 export function getWeeksLived(birthday) {
@@ -27,6 +26,22 @@ export function getAgeAtWeek(birthday, weekIndex) {
 export function getDateAtWeek(birthday, weekIndex) {
   const birth = new Date(birthday)
   return new Date(birth.getTime() + weekIndex * 7 * 24 * 60 * 60 * 1000)
+}
+
+// Start of the real calendar week (Sunday) containing `date`.
+export function getCalendarWeekStart(date = new Date()) {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() - d.getDay()) // getDay(): 0 = Sunday
+  return d
+}
+
+// The Sunday→Saturday calendar week that the user's current life-week falls in.
+export function getCurrentCalendarWeek(now = new Date()) {
+  const start = getCalendarWeekStart(now)
+  const end = new Date(start)
+  end.setDate(end.getDate() + 6) // Saturday
+  return { start, end }
 }
 
 export function formatDate(date) {

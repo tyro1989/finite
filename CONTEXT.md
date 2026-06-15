@@ -54,7 +54,9 @@ railway up         # deploy (project already linked)
   customThemes: [],     // user-defined themes: [{ value, label, icon }]
 }
 ```
-`weekIndex` = whole weeks since birthday (`getWeeksLived`). Day index 0–6 = Mon–Sun within a week.
+`weekIndex` = whole weeks since birthday (`getWeeksLived`). Day index 0–6 = **Sun–Sat** within a week. The This Week tab displays the **real calendar week (Sunday→Saturday)** via `getCurrentCalendarWeek()`, NOT a birthday-anchored 7-day span.
+
+Life stages are simplified to 3 (`LIFE_PHASES`): Early years (0–5), School years (5–18), Adult life (18 → life expectancy). Demarcations at ages 5 & 18 are highlighted on the grid's year axis.
 
 ## Components (`src/components/`)
 

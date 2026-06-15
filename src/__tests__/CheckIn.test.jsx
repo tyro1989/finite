@@ -77,8 +77,8 @@ describe('CheckIn — This Week view', () => {
   it('records a daily mood via onReflection', () => {
     const onReflection = vi.fn()
     render(<CheckIn {...BASE_PROPS} onReflection={onReflection} />)
-    // First enabled mood button (Monday "Good")
-    fireEvent.click(screen.getByLabelText(/Mon Good/i))
+    // Mock "today" is Sunday 2026-03-15 — the first (and only enabled) day of the week
+    fireEvent.click(screen.getByLabelText(/Sun Good/i))
     expect(onReflection).toHaveBeenCalled()
     const [, payload] = onReflection.mock.calls[0]
     expect(payload.dailySentiments).toBeTruthy()

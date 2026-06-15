@@ -53,9 +53,12 @@ describe('Grid — rendering', () => {
     expect(screen.getByText('Intention')).toBeInTheDocument()
   })
 
-  it('shows the phase gradient label', () => {
+  it('shows the three simplified life stages in the legend', () => {
     render(<Grid {...PROPS} />)
-    expect(screen.getByText(/childhood → final chapter/i)).toBeInTheDocument()
+    // Stage names can also appear in the current-phase badge, so allow >= 1
+    expect(screen.getAllByText('Early years').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('School years').length).toBeGreaterThanOrEqual(1)
+    expect(screen.getAllByText('Adult life').length).toBeGreaterThanOrEqual(1)
   })
 
   it('shows a prominent Add a life event button', () => {

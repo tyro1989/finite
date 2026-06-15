@@ -247,14 +247,14 @@ export default function Grid({
         <span style={s.addEventNote}>Mark a milestone, memory, or turning point</span>
       </button>
 
-      {/* Simplified legend — phase gradient + the three things that matter on the grid */}
+      {/* Simplified legend — three life stages + the three things that matter on the grid */}
       <div style={s.legend}>
-        <div style={s.phaseGradient}>
-          {LIFE_PHASES.map(p => (
-            <div key={p.name} style={{ ...s.phaseSwatch, background: p.color }} title={p.name} />
-          ))}
-          <span style={s.phaseGradientLabel}>Childhood → Final chapter</span>
-        </div>
+        {LIFE_PHASES.map(p => (
+          <div key={p.name} style={s.legendItem}>
+            <div style={{ ...s.dot, background: p.color }} />
+            <span style={s.legendLabel}>{p.name}</span>
+          </div>
+        ))}
         <div style={s.legendDivider} />
         <div style={s.legendItem}>
           <div style={{ ...s.dot, background: 'var(--accent)', boxShadow: '0 0 6px var(--accent)' }} />
@@ -275,9 +275,15 @@ export default function Grid({
 
         <div style={s.gridOuter}>
           <div style={s.yearAxis}>
-            {Array.from({ length: lifeExpectancy }, (_, year) => (
-              <div key={year} style={s.yearLabel}>{year % 5 === 0 ? year : ''}</div>
-            ))}
+            {Array.from({ length: lifeExpectancy }, (_, year) => {
+              const isBoundary = year === 5 || year === 18  // key life-stage demarcations
+              const show = isBoundary || year % 10 === 0
+              return (
+                <div key={year} style={{ ...s.yearLabel, ...(isBoundary ? s.yearLabelBoundary : {}) }}>
+                  {show ? year : ''}
+                </div>
+              )
+            })}
           </div>
           <div style={s.gridScroll} ref={gridRef}>
             <div style={{ ...s.grid, width: `${COLS * CELL - 1}px` }}>{cells}</div>
@@ -626,9 +632,6 @@ const s = {
 
   // Simplified legend
   legend: { display: 'flex', flexWrap: 'wrap', gap: '8px 16px', alignItems: 'center' },
-  phaseGradient: { display: 'flex', alignItems: 'center', gap: 6 },
-  phaseSwatch: { width: 14, height: 10, flexShrink: 0 },
-  phaseGradientLabel: { fontSize: 11, color: 'var(--text3)', marginLeft: 4 },
   legendDivider: { width: 1, height: 16, background: 'var(--border)' },
   legendItem: { display: 'flex', alignItems: 'center', gap: 5 },
   dot: { width: 10, height: 10, borderRadius: 2, flexShrink: 0 },
@@ -645,6 +648,7 @@ const s = {
     height: 8, marginBottom: 1, fontSize: 8, color: 'var(--text3)',
     lineHeight: '8px', textAlign: 'right', minWidth: 16, paddingRight: 4,
   },
+  yearLabelBoundary: { color: 'var(--accent)', fontWeight: 700 },
   gridScroll: { overflowY: 'auto', overflowX: 'auto', maxHeight: '70vh' },
   grid: { display: 'flex', flexWrap: 'wrap', gap: 1 },
   infoPanel: { flex: '1 1 200px', minWidth: 200, display: 'flex', flexDirection: 'column', gap: 12 },

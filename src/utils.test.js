@@ -3,7 +3,7 @@ import {
   getWeeksLived, getAgeAtWeek, getDateAtWeek, formatDate,
   getLifePhase, getCurrentAge, getSecondsSinceBirth,
   getRealityBreakdown, getFreeWeeksToGoal, getRemainingVisits,
-  formatNumber, LIFE_PHASES,
+  formatNumber, LIFE_PHASES, getCalendarWeekStart, getCurrentCalendarWeek,
 } from './utils'
 
 // test-setup.js sets system time to 2026-03-15T12:00:00Z globally
@@ -13,8 +13,14 @@ const BD = '1990-03-15'
 // ─── LIFE_PHASES ──────────────────────────────────────────────────────────────
 
 describe('LIFE_PHASES', () => {
-  it('has exactly 7 phases', () => expect(LIFE_PHASES).toHaveLength(7))
+  it('has exactly 3 simplified phases', () => expect(LIFE_PHASES).toHaveLength(3))
   it('first phase starts at age 0', () => expect(LIFE_PHASES[0].startAge).toBe(0))
+  it('demarcates at age 5 and 18', () => {
+    expect(LIFE_PHASES[0].endAge).toBe(5)
+    expect(LIFE_PHASES[1].startAge).toBe(5)
+    expect(LIFE_PHASES[1].endAge).toBe(18)
+    expect(LIFE_PHASES[2].startAge).toBe(18)
+  })
   it('every phase has a name, color, startAge, endAge', () => {
     LIFE_PHASES.forEach(p => {
       expect(p).toHaveProperty('name')
@@ -29,22 +35,15 @@ describe('LIFE_PHASES', () => {
 
 describe('getLifePhase', () => {
   it.each([
-    [0,   'Childhood'],
-    [5,   'Childhood'],
-    [12,  'Childhood'],
-    [13,  'Adolescence'],
-    [17,  'Adolescence'],
-    [18,  'Young Adult'],
-    [25,  'Young Adult'],
-    [26,  'Building'],
-    [40,  'Building'],
-    [41,  'Prime'],
-    [60,  'Prime'],
-    [61,  'Wisdom'],
-    [75,  'Wisdom'],
-    [76,  'Final Chapter'],
-    [90,  'Final Chapter'],
-    [200, 'Final Chapter'], // beyond range falls to last
+    [0,   'Early years'],
+    [4,   'Early years'],
+    [5,   'School years'],
+    [12,  'School years'],
+    [17,  'School years'],
+    [18,  'Adult life'],
+    [40,  'Adult life'],
+    [75,  'Adult life'],
+    [200, 'Adult life'], // beyond range falls to last
   ])('age %i → %s', (age, name) => {
     expect(getLifePhase(age).name).toBe(name)
   })
@@ -52,6 +51,24 @@ describe('getLifePhase', () => {
   it('returns an object with a color', () => {
     const phase = getLifePhase(30)
     expect(phase.color).toMatch(/^#[0-9a-f]{6}$/i)
+  })
+})
+
+// ─── calendar weeks (Sunday → Saturday) ─────────────────────────────────────
+
+describe('getCalendarWeekStart / getCurrentCalendarWeek', () => {
+  it('snaps to Sunday', () => {
+    // 2026-03-18 is a Wednesday → week start should be Sunday 2026-03-15
+    const start = getCalendarWeekStart(new Date('2026-03-18T09:00:00Z'))
+    expect(start.getDay()).toBe(0)
+  })
+
+  it('current week spans Sunday to Saturday (7 days)', () => {
+    const { start, end } = getCurrentCalendarWeek()
+    expect(start.getDay()).toBe(0) // Sunday
+    expect(end.getDay()).toBe(6)   // Saturday
+    const days = Math.round((end - start) / (24 * 60 * 60 * 1000))
+    expect(days).toBe(6)
   })
 })
 

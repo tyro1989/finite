@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { getWeeksLived, getDateAtWeek, getWeeklyPerspective, getRemainingVisits } from '../utils'
+import { getWeeksLived, getWeeklyPerspective, getRemainingVisits, getCurrentCalendarWeek } from '../utils'
 import { themeMeta } from '../themes'
 import ThemePicker from './ThemePicker'
 
@@ -59,18 +59,12 @@ const VERDICT_OPTIONS = [
   { value: 'no',       label: 'No',       sub: 'It slipped',    color: '#c62828', bg: '#fbe9e7' },
 ]
 
-const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const MOODS = [
   { value: 'positive', icon: '☺', label: 'Good',  color: '#2e7d32', bg: '#e8f5e9' },
   { value: 'neutral',  icon: '•', label: 'Okay',  color: '#b8860b', bg: '#fff8e1' },
   { value: 'negative', icon: '☹', label: 'Hard',  color: '#c62828', bg: '#fbe9e7' },
 ]
-
-function getWeekEndDate(startDate) {
-  const end = new Date(startDate)
-  end.setDate(end.getDate() + 6)
-  return end
-}
 
 function formatShortDate(date) {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
@@ -105,10 +99,10 @@ export default function CheckIn({
 
   const [view, setView] = useState('this')
 
-  const weekStart = getDateAtWeek(birthday, currentWeek)
-  const weekEnd = getWeekEndDate(weekStart)
-  const lastWeekStart = getDateAtWeek(birthday, lastWeek)
-  const lastWeekEnd = getWeekEndDate(lastWeekStart)
+  // Real calendar weeks (Sunday → Saturday), not birthday-anchored.
+  const { start: weekStart, end: weekEnd } = getCurrentCalendarWeek()
+  const lastWeekStart = new Date(weekStart); lastWeekStart.setDate(lastWeekStart.getDate() - 7)
+  const lastWeekEnd = new Date(weekEnd); lastWeekEnd.setDate(lastWeekEnd.getDate() - 7)
 
   const perspective = getWeeklyPerspective(birthday, lifeExpectancy, currentWeek)
   const headline = getAttentionHeadline({
